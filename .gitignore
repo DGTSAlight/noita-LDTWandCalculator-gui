@@ -1,0 +1,30 @@
+# 忽略所有隐藏文件（但保留本文件）
+.*
+!.gitignore
+
+# 日志与临时文件
+*.log
+*.tmp
+
+# 仅本地保留：数据采集、文档、图片素材、旧资料
+data/
+docs/*
+images/
+speed_based/
+src/
+
+# 验证 / 自检脚本（不随仓库发布）
+tests/
+
+# 信息采集脚本（仅本地）；计算器实现脚本需上传
+scripts/*
+!scripts/impl/
+
+# 文档类：默认全部忽略，只放行 README / 协议 / 指定文件
+*.md
+*.txt
+!README.md
+!README.en.md
+!LICENSE
+!docs/Dn*.md
+!docs/*.pdf

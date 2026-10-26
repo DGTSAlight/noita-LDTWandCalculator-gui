@@ -999,7 +999,8 @@
     <footer>
       触手基础速度 v₀ = 8 px/f；阻力 ξ = 0.55；
       由于游戏代码设计问题（疑似漏洞），实际 v₁ = <b>7.92</b> px/f（教程值）；
-      公式来源：Noita 跃迁教程 2.2.2「速度触手跃迁」。单文件 HTML，双击即用，无需环境。
+      <br>单文件 HTML，双击即用，无需环境。
+      <a id="dl-offline-link" href="./" style="color: #fff;" download="GUI_v0.6.html">下载离线版</a>
     </footer>
   </div>
 
@@ -2154,6 +2155,10 @@
       }
 
       $('#runSelfTest').addEventListener('click', runSelfTests);
+
+      // 下载链接：仅远程（http/https / GitHub Pages）显示；本地 file:// 双击打开即已是离线版，无需显示
+      var dl = $('#dl-offline-link');
+      if (dl && location.protocol === 'file:') { dl.style.display = 'none'; }
 
     })();
   </script>

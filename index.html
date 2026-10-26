@@ -1,0 +1,3220 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Noita 速度跃迁计算器（触手 / 黑闪）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    /* ============ 主题变量 ============ */
+    :root {
+      --bg-0: #0a0718;
+      --bg-1: #130d2a;
+      --bg-2: #1c1438;
+      --bg-3: #261a4a;
+      --border: #3a2c6a;
+      --border-light: #5a4aa0;
+      --text: #ece7ff;
+      --text-dim: #a89fd1;
+      --accent: #9d7dff;
+      /* 紫 */
+      --accent-2: #d448ff;
+      /* 洋红 */
+      --ok: #4ade80;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --radius: 10px;
+      --radius-lg: 16px;
+      --shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background:
+        radial-gradient(circle at 10% -10%, rgba(157, 125, 255, 0.25), transparent 50%),
+        radial-gradient(circle at 90% 110%, rgba(212, 72, 255, 0.18), transparent 50%),
+        linear-gradient(180deg, var(--bg-0), var(--bg-1) 60%, #080613);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, -apple-system, "Segoe UI", sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ============ 装饰：触手、上下飞、法杖、Noita ============ */
+    .deco-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .deco-layer .deco {
+      position: absolute;
+      image-rendering: pixelated;
+      opacity: 0.25;
+      filter: drop-shadow(0 0 6px rgba(157, 125, 255, 0.5));
+      transition: transform 1.2s ease;
+    }
+
+    .deco-layer .deco.t1 {
+      left: -10px;
+      top: 8%;
+      width: 110px;
+      transform: rotate(-18deg);
+    }
+
+    .deco-layer .deco.t2 {
+      right: -8px;
+      top: 28%;
+      width: 120px;
+      transform: rotate(22deg) scaleX(-1);
+      opacity: 0.22;
+    }
+
+    .deco-layer .deco.t3 {
+      left: 8%;
+      bottom: -6px;
+      width: 140px;
+      transform: rotate(-5deg);
+      opacity: 0.18;
+    }
+
+    .deco-layer .deco.fu {
+      right: 14%;
+      top: 4%;
+      width: 34px;
+      opacity: 0.55;
+      animation: bob 3s ease-in-out infinite;
+    }
+
+    .deco-layer .deco.fd {
+      left: 15%;
+      bottom: 22%;
+      width: 30px;
+      opacity: 0.5;
+      animation: bob 2.4s ease-in-out infinite reverse;
+    }
+
+    .deco-layer .deco.wn {
+      right: 4%;
+      bottom: 12%;
+      width: 58px;
+      opacity: 0.35;
+      transform: rotate(-8deg);
+    }
+
+    .deco-layer .deco.no {
+      left: 50%;
+      top: 6px;
+      transform: translateX(-50%);
+      width: 46px;
+      opacity: 0.55;
+    }
+
+    @keyframes bob {
+
+      0%,
+      100% {
+        translate: 0 0
+      }
+
+      50% {
+        translate: 0 -6px
+      }
+    }
+
+    /* ============ 布局 ============ */
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1060px;
+      margin: 0 auto;
+      padding: 64px 20px 80px;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    header h1 {
+      font-size: 28px;
+      margin: 10px 0 4px;
+      background: linear-gradient(90deg, #fff 0%, var(--accent) 60%, var(--accent-2) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      letter-spacing: 2px;
+    }
+
+    header p {
+      color: var(--text-dim);
+      margin: 0 0 4px;
+      font-size: 13px;
+    }
+
+    header .math {
+      color: var(--text);
+      font-style: italic;
+      letter-spacing: 0.3px;
+    }
+
+    header .math i {
+      font-style: italic;
+    }
+
+    header .math .sub {
+      vertical-align: sub;
+      font-size: 0.82em;
+    }
+
+    header .math .sup {
+      vertical-align: super;
+      font-size: 0.82em;
+    }
+
+    header .math .sym {
+      font-style: normal;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .card {
+      background: linear-gradient(180deg, rgba(28, 20, 56, 0.85), rgba(19, 13, 42, 0.85));
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 20px 22px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+      backdrop-filter: blur(4px);
+    }
+
+    .card h2 {
+      font-size: 15px;
+      margin: 0 0 14px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-bottom: 10px;
+      border-bottom: 1px dashed var(--border);
+    }
+
+    .card h2::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px 16px;
+    }
+
+    .grid3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px 16px;
+    }
+
+    @media (max-width: 720px) {
+
+      .grid2,
+      .grid3 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    label {
+      font-size: 13px;
+      color: var(--text-dim);
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select {
+      width: 100%;
+      background: var(--bg-3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 14px;
+      outline: none;
+      transition: border 0.15s, box-shadow 0.15s;
+    }
+
+    input[type="number"]:focus,
+    input[type="text"]:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(157, 125, 255, 0.25);
+    }
+
+    input[type="radio"] {
+      accent-color: var(--accent);
+    }
+
+    input[type="checkbox"] {
+      accent-color: var(--accent);
+    }
+
+    .radio-inline {
+      display: flex;
+      gap: 16px;
+      padding-top: 6px;
+      flex-wrap: wrap;
+    }
+
+    .radio-inline span {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+    }
+
+    .inline-num {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+    }
+
+    .inline-num input {
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+
+    .inline-num input:focus {
+      box-shadow: none;
+    }
+
+    .inline-num b {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* 额外指数数组按钮行 */
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+    }
+
+    .chip input {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      width: 50px;
+      outline: none;
+      font-size: 12px;
+    }
+
+    .chip button {
+      border: none;
+      background: transparent;
+      color: var(--err);
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0 2px;
+    }
+
+    .btn {
+      border: 1px solid var(--border-light);
+      background: var(--bg-3);
+      color: var(--text);
+      padding: 6px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s, border 0.15s;
+    }
+
+    .btn:hover {
+      background: var(--bg-2);
+      border-color: var(--accent);
+    }
+
+    .btn.primary {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      border: none;
+      color: white;
+      font-weight: 600;
+      padding: 10px 18px;
+      box-shadow: 0 4px 18px rgba(157, 125, 255, 0.35);
+    }
+
+    .btn.primary:hover {
+      filter: brightness(1.05);
+    }
+
+    .btn.primary:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .switch {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-dim);
+    }
+
+    .switch input {
+      accent-color: var(--accent);
+      transform: scale(1.15);
+    }
+
+    /* 结果区 */
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    @media (max-width: 720px) {
+      .summary {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .metric {
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+
+    .metric .lbl {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-bottom: 4px;
+    }
+
+    .metric .val {
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+    }
+
+    .metric .val.ok {
+      color: var(--ok);
+    }
+
+    .metric .val.warn {
+      color: var(--warn);
+    }
+
+    .metric .val.err {
+      color: var(--err);
+    }
+
+    .metric .val span.small {
+      font-weight: 500;
+      font-size: 12px;
+      opacity: 0.85;
+      margin-left: 4px;
+    }
+
+    /* 分解卡片 */
+    .decompose {
+      background: linear-gradient(180deg, rgba(157, 125, 255, 0.08), rgba(212, 72, 255, 0.06));
+      border: 1px dashed var(--border-light);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .decompose-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .decompose-head .title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+
+    .decompose-head .meta {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    .formula {
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 14px;
+      letter-spacing: 0.5px;
+      padding: 6px 10px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      display: inline-block;
+      margin: 4px 0 10px;
+      color: #fff;
+      word-break: break-all;
+    }
+
+    .factors-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .factor-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px 8px 4px 4px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      position: relative;
+    }
+
+    .factor-chip .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 2px;
+      flex-shrink: 0;
+      margin: 0 2px 0 2px;
+      align-self: center;
+    }
+
+    .factor-chip .dot.a {
+      background: linear-gradient(135deg, #4a5bff, #9d7dff);
+    }
+
+    .factor-chip .dot.b {
+      background: linear-gradient(135deg, #ff6b6b, #d448ff);
+    }
+
+    .factor-chip .dot.c {
+      background: linear-gradient(135deg, #9ca3af, #5a4aa0);
+    }
+
+    .factor-chip img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      background: var(--bg-1);
+      border-radius: 5px;
+      padding: 1px;
+      border: 1px solid var(--border);
+    }
+
+    .factor-chip .num {
+      font-family: Consolas, monospace;
+      font-size: 13px;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    /* 复制因子徽标：显示在 chip 右上角，如 ×10 */
+    .factor-chip .exp-badge {
+      position: absolute;
+      top: -9px;
+      right: -8px;
+      background: linear-gradient(135deg, var(--accent-2), var(--accent));
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      border-radius: 9px;
+      padding: 1px 6px;
+      min-width: 14px;
+      text-align: center;
+      box-shadow: 0 2px 6px rgba(212, 72, 255, 0.55);
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      line-height: 1.3;
+      white-space: nowrap;
+    }
+
+    /* 上标指数（formula 里 0.3^10 显示） */
+    .formula sup {
+      font-size: 0.72em;
+      color: var(--accent-2);
+      font-weight: 700;
+      vertical-align: super;
+      line-height: 0;
+    }
+
+    /* 提示文字 */
+    .hint {
+      font-size: 11px;
+      color: var(--text-dim);
+      margin-top: 4px;
+      line-height: 1.5;
+    }
+
+    .hint.warn {
+      color: var(--warn);
+    }
+
+    .hint.err {
+      color: var(--err);
+    }
+
+    .hint.ok {
+      color: var(--ok);
+    }
+
+    .copy-block {
+      margin-top: 14px;
+      padding: 10px 12px;
+      background: linear-gradient(180deg, rgba(212, 72, 255, 0.06), rgba(157, 125, 255, 0.04));
+      border: 1px dashed var(--border-light);
+      border-radius: 10px;
+    }
+
+    .copy-block .copy-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .copy-block .copy-params {
+      margin-top: 10px;
+      display: none;
+    }
+
+    .copy-block .copy-params.active {
+      display: block;
+    }
+
+    .badge-warn {
+      display: inline-block;
+      padding: 2px 8px;
+      background: rgba(251, 191, 36, 0.15);
+      border: 1px solid rgba(251, 191, 36, 0.5);
+      color: var(--warn);
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .empty {
+      font-size: 13px;
+      color: var(--text-dim);
+      padding: 16px;
+      text-align: center;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.12);
+    }
+
+    .solutions-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* 分页 & 排序控件 */
+    .result-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 0 0 10px;
+      padding: 8px 10px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .result-controls .row {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .pager {
+      display: inline-flex;
+      gap: 4px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .pager button {
+      min-width: 28px;
+      background: var(--bg-3);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .pager button:hover {
+      border-color: var(--accent);
+    }
+
+    .pager button.active {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      border-color: transparent;
+      font-weight: 700;
+    }
+
+    .pager button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .pager .info {
+      font-size: 12px;
+      color: var(--text-dim);
+      margin: 0 4px;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--text-dim);
+      font-size: 11px;
+      margin-top: 18px;
+      opacity: 0.8;
+    }
+
+    kbd {
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 6px;
+      font-size: 11px;
+      color: var(--text);
+      font-family: Consolas, monospace;
+    }
+
+    /* 自检区 */
+    details.self-test summary {
+      cursor: pointer;
+      user-select: none;
+      padding: 4px 0;
+      color: var(--accent);
+      font-size: 12px;
+    }
+
+    details.self-test[open] summary {
+      margin-bottom: 8px;
+    }
+
+    .self-test pre {
+      margin: 0;
+      padding: 10px;
+      background: #0a0718;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #d2cdff;
+      font-size: 12px;
+      overflow-x: auto;
+    }
+
+    /* 进度条 */
+    .progress {
+      height: 4px;
+      background: var(--bg-3);
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 10px;
+      display: none;
+    }
+
+    .progress.active {
+      display: block;
+    }
+
+    .progress>div {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.2s ease;
+    }
+
+    /* 分组选择（法杖倍率 / 误差模式） */
+    .segmented {
+      display: inline-flex;
+      background: var(--bg-3);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .segmented label {
+      margin: 0;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: 13px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+
+    .segmented input {
+      display: none;
+    }
+
+    .segmented input:checked+span {
+      color: #fff;
+    }
+
+    .segmented label:has(input:checked) {
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(157, 125, 255, 0.35);
+    }
+
+    /* ============ v0.7：双页面切换 ============ */
+    .page-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      margin: 6px 0 18px;
+    }
+    .page-tabs button {
+      font-family: inherit;
+      font-size: 15px;
+      padding: 9px 26px;
+      cursor: pointer;
+      color: var(--text-dim);
+      background: rgba(20, 14, 44, 0.65);
+      border: 1px solid rgba(122, 92, 255, 0.35);
+      border-radius: 999px;
+      transition: all .25s ease;
+      backdrop-filter: blur(4px);
+    }
+    .page-tabs button:hover { color: #fff; border-color: var(--accent); }
+    .page-tabs button.active {
+      color: #fff;
+      background: linear-gradient(135deg, rgba(122, 92, 255, 0.35), rgba(213, 90, 255, 0.25));
+      border-color: var(--accent);
+      box-shadow: 0 0 14px rgba(157, 125, 255, 0.35);
+    }
+    .page { display: none; }
+    .page.active { display: block; animation: pageIn .45s ease; }
+    @keyframes pageIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: none; }
+    }
+    /* 装饰层分页显示 */
+    .deco-layer { display: none; }
+    .deco-layer.active { display: block; }
+    .deco-layer.active.bf { animation: decoIn .6s ease; }
+    @keyframes decoIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* ============ v0.7：黑闪页 ============ */
+    .bf-warn {
+      margin: 10px 0 4px;
+      padding: 10px 14px;
+      border: 1px solid rgba(251, 191, 36, 0.55);
+      border-left: 4px solid rgba(251, 191, 36, 0.8);
+      border-radius: 8px;
+      background: rgba(251, 191, 36, 0.07);
+      color: #fbd38d;
+      font-size: 13px;
+      line-height: 1.65;
+    }
+    .bf-thanks {
+      margin-top: 14px;
+      padding: 10px 14px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-dim);
+      border: 1px dashed rgba(122, 92, 255, 0.35);
+      border-radius: 8px;
+    }
+    .bf-thanks b { color: #b79cff; }
+    /* 方案卡片：黑洞/闪电弹两行 */
+    .carrier-row {
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      background: rgba(16, 11, 36, 0.55);
+      border: 1px solid rgba(122, 92, 255, 0.22);
+    }
+    .carrier-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 10px;
+      font-size: 12.5px;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+    .carrier-head .cname {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .carrier-head .cname img { width: 18px; height: 18px; image-rendering: pixelated; }
+    .carrier-head b { color: #b79cff; }
+    .carrier-row .factors-row { margin-top: 4px; }
+    /* 时间修正 chip 角点 */
+    .dot.t { background: linear-gradient(135deg, #38bdf8, #2563eb); }
+    .dot.d { background: linear-gradient(135deg, #f472b6, #d946ef); }
+  </style>
+</head>
+
+<body>
+
+  <!-- 装饰层：触手页 -->
+  <div class="deco-layer active" id="deco-tentacle" aria-hidden="true">
+    <img class="deco t1" alt="" data-icon="_deco_tentacle.png">
+    <img class="deco t2" alt="" data-icon="_deco_tentacle.png">
+    <img class="deco t3" alt="" data-icon="_deco_tentacle.png">
+    <img class="deco fu" alt="" data-icon="factor_updown_1.2.png">
+    <img class="deco fd" alt="" data-icon="_deco_fly_down.png">
+    <img class="deco wn" alt="" data-icon="_deco_wand.png">
+    <img class="deco no" alt="" data-icon="_deco_noita.png">
+  </div>
+
+  <!-- 装饰层：黑闪页（触手→黑洞/闪电弹；上飞→蓝表；魔杖灵→鹿） -->
+  <div class="deco-layer bf" id="deco-blackflash" aria-hidden="true">
+    <img class="deco t1" alt="" data-icon="mod_blackhole.png">
+    <img class="deco t2" alt="" data-icon="mod_bolt.png">
+    <img class="deco t3" alt="" data-icon="mod_blackhole.png">
+    <img class="deco fu" alt="" data-icon="mod_blue_table.png">
+    <img class="deco fd" alt="" data-icon="mod_bolt.png">
+    <img class="deco wn" alt="" data-icon="mod_deer.png">
+    <img class="deco no" alt="" data-icon="_deco_noita.png">
+  </div>
+
+  <div class="wrap">
+    <div class="page-tabs">
+      <button type="button" id="tabTentacle" class="active">✦ 触手跃迁</button>
+      <button type="button" id="tabBlackflash">✦ 黑闪跃迁</button>
+    </div>
+
+    <!-- ==================== 触手页 ==================== -->
+    <div id="page-tentacle" class="page active">
+    <header>
+      <h1>✦ NOITA 速度触手跃迁计算器 ✦</h1>
+      <p>公式：
+        <span class="math">
+          <i>D</i> = <i>v</i><span class="sub">1</span> · 指数级乘数 · α<span class="sub">other</span>
+        </span>
+        &nbsp;，其中
+        <span class="math"><i>v</i><span class="sub">1</span> = 7.92 像素/帧</span>
+      </p>
+      <p>默认指数因子：上/下飞 1.2<span style="vertical-align:super;font-size:0.82em">n</span>（不受 0~20 钳制）
+        &nbsp;·&nbsp; α<span style="vertical-align:sub;font-size:0.82em">other</span> 每一步相乘后都立即钳制到 ≤ 20
+      </p>
+    </header>
+
+    <!-- ========== 1. 目标距离 ========== -->
+    <section class="card">
+      <h2>① 目标跃迁距离</h2>
+      <div class="grid2">
+        <div>
+          <label>预设距离</label>
+          <div class="radio-inline" id="distPreset">
+            <span><input type="radio" name="distPreset" value="ng0" checked> NG + 0（35,840 像素 / 1 世界）</span>
+            <span><input type="radio" name="distPreset" value="ng1"> NG + 1（32,768 像素）</span>
+            <span><input type="radio" name="distPreset" value="custom"> 自定义</span>
+          </div>
+        </div>
+        <div>
+          <label>距离 [像素]（选择自定义时可编辑）</label>
+          <input type="number" id="distCustom" value="35840" min="1" step="1" disabled>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 2. 指数级乘数 ========== -->
+    <section class="card">
+      <h2>② 指数级速度乘数（不受 0~20 钳制）</h2>
+      <div class="grid2">
+        <div>
+          <label>上 / 下飞数量 <kbd>1.2<sup>n</sup></kbd></label>
+          <input type="number" id="updownCount" value="40" min="0" step="1">
+        </div>
+        <div>
+          <label>额外指数级乘数（可选，例如激光瞄具等修正天赋）</label>
+          <div class="chip-row" id="extraExpList">
+            <!-- 动态：chip 元素在这里，格式 [底数 1.3] [指数 2] [×删除] -->
+          </div>
+          <div style="margin-top:8px">
+            <button class="btn" type="button" id="addExtraBtn">＋ 添加底数/指数</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ========== 3. 搜索参数 ========== -->
+    <section class="card">
+      <h2>③ 分解参数（法杖 / 误差 / 最大个数 / 显示）</h2>
+      <div class="grid2">
+        <div>
+          <label>法杖自带速度倍率</label>
+          <div class="segmented" id="staffSeg">
+            <label><input type="radio" name="staff" value="none"><span>无加成（固定 × 1.0）</span></label>
+            <label><input type="radio" name="staff" value="unlimit" checked><span>不限制加成（自动选择 1 / 1.25 /
+                1.5）</span></label>
+          </div>
+        </div>
+        <div>
+          <label>粘液弹（× 1.1）</label>
+          <div class="switch" style="padding-top:8px">
+            <input type="checkbox" id="withSlime" checked>启用（α_other 中 1.1 倍速度乘数的唯一来源；不计入最大修正个数）
+          </div>
+        </div>
+      </div>
+      <div class="grid3" style="margin-top:14px">
+        <div>
+          <label>最大普通修正个数 [0..12]</label>
+          <input type="number" id="maxCount" value="5" min="0" max="12" step="1">
+        </div>
+        <div>
+          <label>允许误差模式</label>
+          <div class="segmented" id="errSeg">
+            <label><input type="radio" name="errMode" value="rel" checked><span>相对百分比</span></label>
+            <label><input type="radio" name="errMode" value="abs"><span>绝对像素数</span></label>
+          </div>
+        </div>
+        <div>
+          <label id="tolLbl">允许相对误差 %（0 ~ 50）</label>
+          <input type="number" id="tolerance" value="1" min="0" max="50" step="0.1">
+        </div>
+      </div>
+      <div class="grid3" style="margin-top:14px">
+        <div style="display:flex; align-items:end; gap:16px; flex-wrap:wrap">
+          <label class="switch"><input type="checkbox" id="showIcons" checked>显示对应图标</label>
+          <label class="switch"><input type="checkbox" id="allowClamp20" checked>允许「起始 20 倍」（仅在分解 α 太大时才启用）</label>
+        </div>
+        <div>
+          <label>分解方案排序方式</label>
+          <div class="segmented" id="sortSeg">
+            <label><input type="radio" name="sortMode" value="err" checked><span>误差优先</span></label>
+            <label><input type="radio" name="sortMode" value="least"><span>因子最少优先</span></label>
+          </div>
+        </div>
+        <div>
+          <label>每页显示分解方案数</label>
+          <div class="segmented" id="pageSeg">
+            <label><input type="radio" name="pageSize" value="10" checked><span>10</span></label>
+            <label><input type="radio" name="pageSize" value="20"><span>20</span></label>
+            <label><input type="radio" name="pageSize" value="30"><span>30</span></label>
+          </div>
+        </div>
+      </div>
+      <!-- ===== v0.6：启用复制普通因子 ===== -->
+      <div class="copy-block">
+        <div class="copy-head">
+          <label class="switch"><input type="checkbox" id="enableCopy"> 启用复制普通因子</label>
+          <span class="badge-warn" id="copyWarnBadge" style="display:none">⚠ 开启后计算时间可能较久</span>
+        </div>
+        <div class="copy-params" id="copyParams">
+          <div>
+            <label>复制次数上限 N（质因数仅含 2 / 3 / 5；默认 100，最大 800）</label>
+            <input type="number" id="copyN" value="100" min="1" max="800" step="1">
+            <div class="hint" id="copyNHint">当前 N = 100 = 2²×5²，质因数仅含 2/3/5 ✓（每个因子的复制次数同样须仅含 2/3/5，如 ×51 不合理）</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="progress" id="progBar">
+        <div></div>
+      </div>
+    </section>
+
+    <!-- ========== 计算按钮 ========== -->
+    <div style="text-align:center; margin: 12px 0 18px">
+      <button class="btn primary" id="calcBtn" type="button">✦ 开始计算 ✦</button>
+    </div>
+
+    <!-- ========== 4. 结果 ========== -->
+    <section class="card">
+      <h2>④ 计算结果</h2>
+      <div class="summary" id="summary">
+        <div class="metric">
+          <div class="lbl">目标距离 D</div>
+          <div class="val" id="sDist">—</div>
+        </div>
+        <div class="metric">
+          <div class="lbl">v₁ · 指数级乘数</div>
+          <div class="val" id="sBase">—</div>
+        </div>
+        <div class="metric">
+          <div class="lbl">目标 α<sub>other</sub></div>
+          <div class="val" id="sAlpha">—</div>
+        </div>
+        <div class="metric">
+          <div class="lbl">当前方案的偏差像素</div>
+          <div class="val" id="sErr">—</div>
+        </div>
+      </div>
+      <!-- 分页控件（计算完渲染） -->
+      <div id="pagerTop" style="display:none" class="result-controls"></div>
+      <div id="solutionsWrap">
+        <div class="empty">点击「开始计算」后，这里会显示 α<sub>other</sub> 的分解方案。</div>
+      </div>
+      <!-- 底部分页（计算完渲染） -->
+      <div id="pagerBottom" style="display:none; margin-top:10px" class="result-controls"></div>
+
+      <details class="self-test" style="margin-top:14px">
+        <summary>▶ 打开自检：算法回归测试（常量、钳制每步≤20、NG+0 场景）</summary>
+        <pre id="selfTestOut">点击「自检：运行」开始...
+</pre>
+        <div style="margin-top:8px"><button class="btn" id="runSelfTest" type="button">自检：运行</button></div>
+      </details>
+    </section>
+
+    <footer>
+      触手基础速度 v₀ = 8 px/f；阻力 ξ = 0.55；
+      由于游戏代码设计问题（疑似漏洞），实际 v₁ = <b>7.92</b> px/f（教程值）；
+      <br>单文件 HTML，双击即用，无需环境。
+      <a id="dl-offline-link" href="./" style="color: #fff;" download="GUI_v0.7.html">下载离线版</a>
+    </footer>
+    </div>
+    <!-- ==================== /触手页 ==================== -->
+
+    <!-- ==================== 黑闪页 ==================== -->
+    <div id="page-blackflash" class="page">
+      <header>
+        <h1>✦ NOITA 黑闪跃迁计算器 ✦</h1>
+        <p>载体：黑洞（v₀ = 2/3 px/f · ξ = −0.2 · 存在 120f ± 7f · v<sub>max</sub> = 1000/60）
+          &nbsp;+&nbsp; 闪电弹（v₀ = 90 px/f · ξ = 0.55 · 存在 1f · v<sub>max</sub> = 1024）
+        </p>
+        <p>速度递推：v<sub>n+1</sub> = min(v<sub>n</sub> · (1 − ξ/60), v<sub>max</sub>)；每个「逐渐加速」自第 2 帧起 ξ 额外 −3；法杖速度乘数只作用于黑洞初速</p>
+      </header>
+
+      <div class="bf-warn">⚠ 黑洞闪电弹配置具有大量弊端，请谨慎使用。新手玩家即使运用该配置，也请尽快换成触手或相位跃迁配置。</div>
+
+      <!-- ========== 1. 目标距离 ========== -->
+      <section class="card">
+        <h2>① 目标跃迁距离</h2>
+        <div class="grid2">
+          <div>
+            <label>预设距离</label>
+            <div class="radio-inline" id="bfDistPreset">
+              <span><input type="radio" name="bfDistPreset" value="ng0" checked> NG + 0（35,840 像素 / 1 世界）</span>
+              <span><input type="radio" name="bfDistPreset" value="ng1"> NG + 1（32,768 像素）</span>
+              <span><input type="radio" name="bfDistPreset" value="custom"> 自定义</span>
+            </div>
+          </div>
+          <div>
+            <label>距离 [像素]（选择自定义时可编辑）</label>
+            <input type="number" id="bfDistCustom" value="35840" min="1" step="1" disabled>
+          </div>
+        </div>
+      </section>
+
+      <!-- ========== 2. 搜索参数 ========== -->
+      <section class="card">
+        <h2>② 搜索参数（修正数量 = 时间 + 速度修正种类总和，每载体上限 8）</h2>
+        <div class="grid2">
+          <div>
+            <label>法杖速度乘数（只作用于黑洞初速）</label>
+            <div class="segmented" id="bfStaffSeg">
+              <label><input type="radio" name="bfStaff" value="unlimit" checked><span>不限制乘数（1 / 1.25 / 1.5）</span></label>
+              <label><input type="radio" name="bfStaff" value="limited"><span>仅 1.25 / 1.5 乘数</span></label>
+            </div>
+          </div>
+          <div>
+            <label>粘液弹（× 1.1）</label>
+            <div class="switch" style="padding-top:8px">
+              <input type="checkbox" id="bfWithSlime" checked>启用（不计入修正数量；两载体共享）
+            </div>
+          </div>
+        </div>
+        <div class="grid3" style="margin-top:14px">
+          <div>
+            <label>黑洞修正上限 [0..8]（默认 5）</label>
+            <input type="number" id="bfMaxBh" value="5" min="0" max="8" step="1">
+          </div>
+          <div>
+            <label>闪电弹修正上限 [0..8]（默认 5）</label>
+            <input type="number" id="bfMaxLt" value="5" min="0" max="8" step="1">
+          </div>
+          <div>
+            <label>允许误差模式</label>
+            <div class="segmented" id="bfErrSeg">
+              <label><input type="radio" name="bfErrMode" value="rel" checked><span>相对百分比</span></label>
+              <label><input type="radio" name="bfErrMode" value="abs"><span>绝对像素数</span></label>
+            </div>
+          </div>
+        </div>
+        <div class="grid3" style="margin-top:14px">
+          <div>
+            <label id="bfTolLbl">允许相对误差 %（0 ~ 50）</label>
+            <input type="number" id="bfTolerance" value="1" min="0" max="50" step="0.1">
+          </div>
+          <div>
+            <label>方案排序方式</label>
+            <div class="segmented" id="bfSortSeg">
+              <label><input type="radio" name="bfSortMode" value="err" checked><span>误差优先</span></label>
+              <label><input type="radio" name="bfSortMode" value="least"><span>修正最少优先</span></label>
+            </div>
+          </div>
+          <div>
+            <label>每页显示方案数</label>
+            <div class="segmented" id="bfPageSeg">
+              <label><input type="radio" name="bfPageSize" value="10" checked><span>10</span></label>
+              <label><input type="radio" name="bfPageSize" value="20"><span>20</span></label>
+              <label><input type="radio" name="bfPageSize" value="30"><span>30</span></label>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:14px; display:flex; align-items:end; gap:18px; flex-wrap:wrap">
+          <label class="switch"><input type="checkbox" id="bfShowIcons" checked>显示对应图标</label>
+          <label class="switch"><input type="checkbox" id="bfAllowClamp20">允许「起始 20 倍」（默认关闭，每载体占 1 个修正名额）</label>
+          <label class="switch"><input type="checkbox" id="bfSubset">子集搜索（一方载体的修正是另一方的子集，默认关闭）</label>
+        </div>
+        <!-- ===== 启用复制 ===== -->
+        <div class="copy-block">
+          <div class="copy-head">
+            <label class="switch"><input type="checkbox" id="bfEnableCopy"> 启用复制修正（时间修正同样可复制）</label>
+            <span class="badge-warn" id="bfCopyWarnBadge" style="display:none">⚠ 开启后计算时间可能较久</span>
+          </div>
+          <div class="hint" style="margin-top:6px">复制次数只允许 2 / 3 / 4 / 6 / 8 / 10；最多两种不同复制次数；一次复制可复制多个速度因子（「逐渐加速」对 ξ 的影响叠加）；启用复制时修正上限取 min{5, 用户上限}。</div>
+        </div>
+
+        <div class="progress" id="bfProgBar">
+          <div></div>
+        </div>
+      </section>
+
+      <!-- ========== 计算按钮 ========== -->
+      <div style="text-align:center; margin: 12px 0 18px">
+        <button class="btn primary" id="bfCalcBtn" type="button">✦ 开始计算 ✦</button>
+      </div>
+
+      <!-- ========== 3. 结果 ========== -->
+      <section class="card">
+        <h2>③ 计算结果</h2>
+        <div class="summary" id="bfSummary">
+          <div class="metric">
+            <div class="lbl">目标距离 D</div>
+            <div class="val" id="bfSDist">—</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">误差距离范围（黑洞 ±7f）</div>
+            <div class="val" id="bfSRange">—</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">中间值总距离</div>
+            <div class="val" id="bfSMid">—</div>
+          </div>
+          <div class="metric">
+            <div class="lbl">当前方案的误差</div>
+            <div class="val" id="bfSErr">—</div>
+          </div>
+        </div>
+        <div id="bfPagerTop" style="display:none" class="result-controls"></div>
+        <div id="bfSolutionsWrap">
+          <div class="empty">点击「开始计算」后，这里会显示黑洞 + 闪电弹的修正方案。</div>
+        </div>
+        <div id="bfPagerBottom" style="display:none; margin-top:10px" class="result-controls"></div>
+
+        <details class="self-test" style="margin-top:14px">
+          <summary>▶ 打开自检：黑闪算法回归测试（xls 社区方案 / 闭式 vs 逐帧 / 范围 / 复制 / 子集）</summary>
+          <pre id="bfSelfTestOut">点击「自检：运行」开始...
+</pre>
+          <div style="margin-top:8px"><button class="btn" id="bfRunSelfTest" type="button">自检：运行</button></div>
+        </details>
+      </section>
+
+      <div class="bf-thanks">感谢贡献者 <b>UBK</b> 对本项目的技术支持。</div>
+
+      <footer>
+        黑洞 v₀ = 2/3 px/f、ξ = −0.2、存在 120f ± 7f、v<sub>max</sub> = 1000/60；
+        闪电弹 v₀ = 90 px/f、ξ = 0.55、存在 1f、v<sub>max</sub> = 1024；
+        时间修正：蓝表 +75f / 无害化（黑洞 +280f、闪电弹 +281f）/ 红表 −42f。
+        <br>单文件 HTML，双击即用，无需环境。
+        <a id="bf-dl-offline-link" href="./" style="color: #fff;" download="GUI_v0.7.html">下载离线版</a>
+      </footer>
+    </div>
+    <!-- ==================== /黑闪页 ==================== -->
+  </div>
+
+  <script>
+    /* ========== 核心算法（v0.5：每步钳制版） ==========
+     * 关键规则：
+     *   1. 整个 α_other 每一步相乘之后都立刻钳制到 [0, 20]。
+     *   2. 允许「起始 = 20 因子」（allowClamp20）：该因子只能放在最前面，且计入因子数（onlyFactorCount）并占用 maxCount 1 个名额。
+     *   3. 先枚举「不带 20 起始」，再枚举「带 20 起始」；等价方案优先展示不带 20 的。
+     *   4. 法杖倍率两档：无加成(固定1) / 不限制加成(枚举 1 / 1.25 / 1.5 互斥)；粘液弹 1.1（可选启用，不计入 maxCount）。
+     *   5. 排序两种：误差优先 / 因子最少优先（因子统计：普通因子 9 项 + 起始 20，法杖&粘液弹不计）。
+     */
+    (function () {
+      'use strict';
+
+      // v0.5: 游戏内部小数截断，所以 v1=7.92 精确
+      const V1 = 7.92;
+
+      /* ===== v0.6: 图标 base64 内嵌（PowerShell 脚本自动填充此对象） =====
+       * 未填充时为空对象，iconUrl() 回退到 images/icons/final/ 相对路径。
+       * 填充后变为 { 'factor_xxx.png': 'data:image/png;base64,...' }，HTML 自包含。
+       */
+      const ICON_DATA = {     'factor_accel_2.5.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAABnRSTlMAAAAAAABupgeRAAAAP0lEQVR4nGNgGKygZ/9PIgWh4P///5jSWAURcpjSWAVR5NCksQqiyyFLYxVkwukt/IBMJ5HmadKCleSIG0wAAADViGvFLudeAAAAAElFTkSuQmCC',
+    'factor_chaos_2.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAJ0lEQVQ4jWNgGAWDCPyHAmLFMRSRyobxmSh0OG4X4fIOTSwcBRQCABoYM8/SPrgzAAAAAElFTkSuQmCC',
+    'factor_explode_0.75.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA5klEQVQ4jWNkwAOmexv/33HmAU75jS/fMjLhM4AQ8BcX/k+RAQwMDAwoBnxu5/5PkQG8lV8ZYezvh/3/MzAwMHiYKDAwMDAwLCn4gdUARqyiSIZw2m5knO5t/J+BgYEBW4Cy4NOI7BIGBgYGhg5MQ/C74Hk7QvOdE3DmnyN7GGImcCBc8P////+MjIyMyPSPIwFYDV3Q8YRhxxkOOJ+JgYGBgZGRkREbjWz7go4nDAs6njAkVMgQ5wVkv8M0RoQcwVCHNSF9bueGByLEyQ8YIkKOYI1KvIFIKC/gdAEpYGAN2PjyLSMAlfhfaNk8Ov0AAAAASUVORK5CYII=',
+    'factor_flash_1.2.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAt0lEQVQ4jbVTsQ3CMBA8I9ago0vBNN6BTBCLFim6TGB2SJkB0pGeygW7PA2WXo4NIREnWfK//3T3bxv4F0QkrCbfh+G5muzJ8Zf6XSY36UC34kn7USC1HmNPjp60Oj+bkSaLSIhKnrRfByoi4b2u2qJWTduJ2Kt9f+u6x7lpLAALALVzfWzhVFUHY8yx6EL3qx0sfg+amA7Jk23pDLmigkCbu0KTcTEBQO3cZZH1EjY954hNH2opXsdKgJDJCHpwAAAAAElFTkSuQmCC',
+    'factor_grad_accel_0.32.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAX0lEQVQ4jeXRsQnAIBBGYcnKVtnBMSwcIotZvTQRjt+IyjWBvFLODzxD+E+lJnaGLz0DGCKlplOGsyI8vSJAtAiQFcHUIUC0SAMsgtSQY7qQldxPcC9R2/7GlVyXv90NMHasVcDJ/HgAAAAASUVORK5CYII=',
+    'factor_grad_decel_1.68.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAYklEQVQ4jWNgGLngVaDVd2IVnsCm+f////+xKZ6Mrvn///9LsGnGMOBVoNXk////F6NrRjYAWTOKATDNMAOQNcMMQNcMM4CJqIAgBlDkBWRD0PjEByIelxEfjaQAohPS4AcApRKdy3arY3MAAAAASUVORK5CYII=',
+    'factor_heavy_0.3.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAABnRSTlMAAAAAAABupgeRAAAAd0lEQVR4nGNgoAW4WVZGmoYPJ0/C9TDiMVU8OBhZ5OXatepdXSTbQBTAonqOi+YcF02sDDTAhMzxUhBGY2ACFgi17s4rNAY+DWhW49fDhEcOn5OQDQ5SEcNjCQsyJ0hFjKAeaExjDUEGBoaUPdexa8CqB1M1OQAA0B0wxWWNPoQAAAAASUVORK5CYII=',
+    'factor_lightshot_7.5.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhUlEQVQ4jWNgoBfInn3zPzJNMph9/P9/sgzJnn3z/+zj/+GYbJdQpBlZE07NmjFz/mvGzPmPj40NMKEL8OsE/MfGxgVYYIxnF7YwYGMTZQA2JxJrCIYXSAUsyBxkW6UMfIhyBQu6gJSBD0mGMMIY+KKKgYGB4fqSFEZs4iiCuAzBpZkqAAAyYFqzrPhNZwAAAABJRU5ErkJggg==',
+    'factor_perk_1.1.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAABj0lEQVR4nG2Szy8DQRTH35uZ3VVVbQmlacSPtAlp4lQR0RsSTpxEyoFEXB3cHHHyF0iEi6ROwoG7HwmJcBBp2ouoRAQRlmJbuzuyXT+22/1eJu/N9zPz3pvBWKQNfoQAXNd0VflCxFtZjjUHzx+eoFSEIBJE9fNtZHnfG2gWRFGqlESX2Fjtyau6zQ0AxFw0Te+MBoPtXf6mDuMAgpQQXm6HX6Cg8aFW6B6fDw9Mc00FRHC0wy9gaqbXPTs1GIjGP5/vxSqJCtQBQPxnCEKLDyYX1ia2ZAS0bv2JRPoThLL/BMBwlM31wOh6KtyXcADUvGqrlhdj5fVDK6gOAJMYlqawGFdUV1Kx5GZTLLW7SgUJLNo8y2depO2JulpvjQNALW6dQ1aG5OJ09njH5a+nogDwZgeswcrRe/r04P7y0OUPFHKK5nGY0g8gUty7gpONpcdsGikzGrd1ZgMo8swL3Fwc5R6uzSINv9NjM704Reb2JcfCxkiRKTnF/K0NPrcDEPKUZRE45/FI6PzusRz4BtH8fZDI9IrbAAAAAElFTkSuQmCC',
+    'factor_phasing_0.33.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAdUlEQVQ4jb1Q2xGAIAwjTKIjMYCjOA0DOIojxQ+BQ68g4cP89NprHhfn/gYT8g6VXO8A4AXyYt2HBRLW2l3k3ilaSVqESDL2fpox3kQAm/VndqDE7JW4f7l3MVNYIBlUI2Ty4wgcowJeimkJpHnOuBfIhVW4AKZnQGwCJgrQAAAAAElFTkSuQmCC',
+    'factor_slime_1.1.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAABnRSTlMAAAAAAABupgeRAAAAf0lEQVR4nGNgGAWEASMav2hyUF/uOgiDgYFBSPYHAwODhBRPitkqLBogiuDq3j3m0DJnMZDlufD4CwMDA0QPE7KGvtx1EOMlpHjePeZAlnrx7AuEwYLskqLJQUKyPxgYflw7yaFlzsLAwHDt5B8Ghi/Y/QB3PYQNcRWaB0YqAABoJytGPJt3lQAAAABJRU5ErkJggg==',
+    'factor_staff_1.25.png': 'data:image/png;base64,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',
+    'factor_staff_1.5.png': 'data:image/png;base64,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',
+    'factor_updown_1.2.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAWklEQVQ4jWNgoBf4DwXo4kx0cwFBgM15pMjTHhDlApo6k2jDqe4KmeTF/5ENhvFJcon1tPP/649+/G897TxprpNJXvz//////+uPfoTTJLmCYhdgs41k2wkBAJTCU+VIMeigAAAAAElFTkSuQmCC',
+    'mod_blackhole.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABU0lEQVQ4jaWSrW/CUBTFD3UkiMklna1CDLFmogsOV0FSFDOdggWBJdmWIZATLCGBzaxiG4YlEySIVvExQ0WXdIE/YKJJEXWVd6pv/YIt4SQvuSfvvd+9774L7KlMEOSVPh0cnrANzzHx9XaZSb0VV17pk9RY0mzl03A4pNnKJ6mxpLzSp38Bgsuu65LrusSf1hhE1X1SdX8riAuCb+sdAFCQr2GNO8wv1CIWahHbQAxwVCgDAKxxJ+IDhUEJgOeYaPVsrDc5GIaB9SaHVs+G55iJkuOQnb9gj+po11/wOr6P9kybQitlf3+o8vQ5BwBV90ngRbZua88RL/AiPVx9kMCLrB8cdiieGQDutGbEcwAwujg+K3f1iVbKZiRtCgCoytGDYR9+wtYKwtmrchPtwXkCmlC5q0+AZC/C/UgdqsrN4DEeB4MTAP6ayFRIGLS79j30A1qWzP3uVZ7jAAAAAElFTkSuQmCC',
+    'mod_blue_table.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABYklEQVQ4ja2TMWvCUBSFP8Wl4CBUirQdOmSw2MFB6aDdMnYoCP0LRXTo0KFD59JRiuLi4BYpCP4Ah0LiZAaHShwcHEKRaiGDkPF1sAl5hlBKe5b77uO8c8+93Ad/RGz3olQbC2dpksoU8OKoVfR5uuWKi9M9P4/vCizMTmSuW67Ipjfolit+tJartCXS9dOnAFitViKYh1rIVdoilSn4ubM0mfarkS1IKNXGQtM0oVuuODq/EbrlCk3TRKk29t14lT3Eg4/r5TkA2fRGiguzgyfycr8fCwnkKm3/saqqkqu7xisA9fI8NBeABEAqU+A4f+ZX9JC/fACg120AkDLeQm0nvIM9GWAHHBwcnvDxvqDXbWBPBt8sJVrgOH8lOXh+vAW2c8iqKrN1EqIcOEsTezKXHATFhsMhW54TEogDTPvVWNNQJPJubBqKtA+SAMCoVfRFZuukFJuGIv2HIH69if+OL0gno5IFYi8sAAAAAElFTkSuQmCC',
+    'mod_bolt.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAABnRSTlMAAAAAAABupgeRAAAATUlEQVR4nGNgGCGg/donEqQh3P///2FRiibafu2T3aar2E39//8fmknt1z79//8PLo5iM5qo3aarEKUQKQgXnx+weoOwHkw3k6ZhWAEAsN1H0BhtiugAAAAASUVORK5CYII=',
+    'mod_deer.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAABnRSTlMAAAAAAABupgeRAAAAnklEQVR4nGNgGDCwtzYIjQEBLLg0GBd77cUmzoRLg4BACgMDQ9bq2wwMDOoauugaPnyYg1XbtFBVBgaGAC2l8iB/hIYPH+ac7d2GyyoGBgY3bWY3bWYIG+EHNM8hA+fmdShOgjgXDoyLvfDYhuJpiFI05+26+henBkyfoKlG17Dr6t9dV/86N6+DOBpCdq7biF0DVmkCfiAGkKyBZAAASWMv2tHU6zsAAAAASUVORK5CYII=',
+    'mod_harmless.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA5ElEQVQ4ja2TQQ6CMBBFP0Y23MDENCUeQgws5Abdcg43HIGNiUfxCGyMvUQDISTcoJsuxo01IEUxOKvp5M/r77QF/hEqy0hwRnP1gjNSWUajwhzIpHYO5KtGcEYyTemS7AkALsl+kMs0HTWv+otr3XjSaER+gL5QcEaRH0AajWvdeP2e9buLsu1QAsjDHYpKAc9cGu10PQBYuwAgjUYe7gAARaVw3G6cgJWz+kM4AWXbIfIDFJUaOJkNsGe2tu1gy7b7DLA7uwYmjcb5EGPyGgVndD7Er8m74nS/OSHLn/Liz7QkHg2/iEZFFgKeAAAAAElFTkSuQmCC',
+    'mod_red_table.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAABU0lEQVQ4jbWTMUgCYRiGHyXB7YIchJwKnGoSJbhNEJpFh8aWJhGnhmjMNURKmtoPpVkQbvsXzUkXnW840OW2A4evwe7nzrMoom/5eP/73vd/v5f/4I+V2D2YmDVRGw8zZRD0ohroOafakNzbk8bJXYGeu/gWH99c/cxap1SRMHaqDQFYrVYSxrEVOqWKmClDY7XxaI1HCQAZKlkX8mSmSxKXZozLxKzJzLJEhkquT89FhkpmliUTs6bdyFBFnCXD5HSzDsC6kI/0nrsgENm9ORnYDsjZcjni6vHuAYB0sx7LBeAAwEwZnBk5fWNQtxdbsdfnFwD8UDaxFeaeg2vb+sPJ4ZEmzz2HuefEyNoBEHNw324D2xyybJN//0pAbTzSngO2ozMIi7m2jfs5t3eF1niU8Lt9Pbyv+92+fg97MyiqgRbJTJeR7nf7kf8hXL96if9SH3K6n4u6WRAxAAAAAElFTkSuQmCC',
+    '_deco_caster.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAABrSURBVDhPtZHBEYAgDARTnPXZgHXYmX8cH0DYxAgjZGY/R25HQUQk/cQEhTzMXYEeZynaqYcsvLFGQK4zNfA8FDyFfTsaAon5pC6B6kwQkB6BwgRFMnSJ/I0I9xmnCPKw8LFjF1lgDkwwxA2Wa5QMeLdGtgAAAABJRU5ErkJggg==',
+    '_deco_fly_down.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAXklEQVQ4jWNgoDWQSV78Hx+fKGA97fz/+qMf/1tPO0+aZpnkxf//////v/7oRzhNtCv+//8PV0S2C5BtgxlI0HZkm6kKiDKYZrbT3HCibKC9CwiB/1CALs40EI5BAQDoQlPlIufWqAAAAABJRU5ErkJggg==',
+    '_deco_noita.png': 'data:image/png;base64,AAABAAEAICAAAAEAGACoDAAAFgAAACgAAAAgAAAAQAAAAAEAGAAAAAAAAAAAAEgAAABIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABWWOZAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABWWOZRSrlAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABWWOZRSrlRSrlAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAIQJAIQJAIQJAIQJAIQJAIQJAIQIAAAAAAAAAAAAAAABWWOZRSrlRSrlRSrlAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABRSrlRSrlRSrlRSrlRSrlRSrlAIQIAAAAAAAAAAAAAAABWWOZRSrlRSrlRSrlAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABWWOZWWOZRSrlRSrlAIQIAAAAAAAAAAAAAAAAAAABWWOZRSrlRSrlRSrlAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABWWOZWWOZRSrlWWOZAIQIAAAAAAAAAAAAAAAAAAABWWOZRSrlRSrlRSrlAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABZbv9WWOZRSrlWWOZAIQIAAAAAAAAAAAAAAAAAAABWWOZRSrlWWOZWWOZAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABZbv9WWOZWWOZWWOZAIQIAAAAAAAAAAAAAAAAAAABZbv9WWOZWWOZWWOZAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABZbv9WWOZWWOZWWOZAIQIAAAAAAAAAAAAAAAAAAABei/5Zbv9WWOZZbv9AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABZbv9WWOZWWOZZbv9AIQIAAAAAAAAAAAAAAAAAAABei/5Zbv9WWOZWWOZAIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABei/5Zbv9Zbv9Zbv9AIQIAAAAAAAAAAAAAAAAAAABei/5WWOZZbv9Zbv9AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABei/5ei/5Zbv9Zbv9AIQIAAAAAAAAAAAAAAAAAAABitv5Zbv9Zbv9Zbv9AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABei/5Zbv9Zbv9Zbv9AIQIAAAAAAAAAAAAAAAAAAABitv5Zbv9Zbv9Zbv9AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABitv5ei/5ei/5ei/5AIQIAAAAAAAAAAAAAAAAAAABei/5Zbv9ei/5ei/5AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABitv5itv5ei/5ei/5AIQIAAAAAAAAAAAAAAAAAAABitv5ei/5ei/5itv5AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABn1f9ei/5ei/5ei/5AIQIAAAAAAAAAAAAAAAAAAABitv5ei/5ei/5itv5AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABn1f9ei/5ei/5ei/5AIQIAAAAAAAAAAAAAAAAAAABn1f9ei/5ei/5itv5AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABn1f9ei/5itv5itv5AIQIAAAAAAAAAAAAAAAAAAABn1f9itv5ei/5itv5AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABn1f9itv5itv5itv5AIQIAAAAAAAAAAAAAAAAAAABitv5itv5itv5itv5AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABn1f9itv5n1f9itv5AIQIAAAAAAAAAAAAAAABn1f9itv5itv5itv5itv5AIQIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABn1f9itv5itv5itv5AIQIAAAAAAAAAAABitv5itv5n1f9itv5n1f9itv4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQ8f9itv5n1f9itv5AIQIAAAAAAABitv5n1f9n1f9itv5n1f9n1f8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQ8f9n1f9n1f9n1f9n1f9AIQJn1f9n1f9n1f9n1f9n1f9itv4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQ8f9n1f9n1f9n1f+Q8f9n1f9n1f9n1f9n1f9n1f9n1f8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQ8f9n1f9n1f9n1f9AIQKQ8f9n1f9n1f9n1f9n1f8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABT1fpn1f9n1f9n1f9AIQIAAACQ8f9n1f9n1f8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACQ8f+Q8f+Q8f+Q8f+Q8f8AAAAAAAAAAACQ8f8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD////////3////8/////H////w//+A8H//gPB//8Hwf//B8H//wfB//8Hwf//B8H//wfB//8Hwf//B8H//wfB//8Hwf//B8H//wfB//8Hwf//B8H//wfB//8Hgf//BwP//wYH//8AD///AB///wA///8Ef//+Dv////////////w==',
+    '_deco_tentacle.png': 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAABnRSTlMAAAAAAABupgeRAAABRklEQVR4nGNgIBEwovEz09shjOkzKwlogCuFA6x6mJBVy8hKPXx0U0ZWSkZWCqsRUBvgqhkYGKpr4iESrS0Lnzx+hmkP1AYZWamjR/fDVUN0otkDYUBtQDMeGaBZxQIRPXp0v7W1I6ZqTFOgGrCq1g6eLiBhAmF/eHHm6tpMBgYGZgYGhjNn96qrml++ciYhoXDfvg3IqjtydDTYjgX52R25xsInZ/T6+lYmuHkQS7w8EyBcqGqRLy4uLhEJBR05OhDboBqmz6yE+Mza2rG1ZSFE8MmFDQwMDAY+NRe2tEDYCA1wPUeP7oeEDAMDg4xBAAMDw4UtLXA21A9wcObsXhfncD5+3qNH97/8yXTkGouBjsyFY9t+8elVTLny4cWZ19e3omhgYGAwNXHh4+eVk1NcMTWFT87oyDWWU4+E9px6BQ8lkgEALvGGsg2NWsAAAAAASUVORK5CYII=',
+    '_deco_wand.png': 'data:image/png;base64,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' };
+      window.ICON_DATA = ICON_DATA;
+      function iconUrl(name) {
+        if (!name) return '';
+        return ICON_DATA[name] || ('images/icons/final/' + name);
+      }
+
+      const FACTOR_INFO = [
+        // kind: A=法杖倍率, B=粘液弹1.1（不计入maxCount）, O=普通因子9项, C=20起始
+        { kind: 'A', value: 1.25, name: '法杖倍率 1.25', icon: 'factor_staff_1.25.png' },
+        { kind: 'A', value: 1.5, name: '法杖倍率 1.5', icon: 'factor_staff_1.5.png' },
+        { kind: 'B', value: 1.1, name: '粘液弹 1.1', icon: 'factor_slime_1.1.png' },
+        { kind: 'O', value: 0.33, name: '相位 0.33', icon: 'factor_phasing_0.33.png' },
+        { kind: 'O', value: 0.32, name: '逐渐加速 0.32', icon: 'factor_grad_accel_0.32.png' },
+        { kind: 'O', value: 0.3, name: '沉重一击 0.3', icon: 'factor_heavy_0.3.png' },
+        { kind: 'O', value: 0.75, name: '易爆 0.75', icon: 'factor_explode_0.75.png' },
+        { kind: 'O', value: 1.2, name: '闪灭 1.2', icon: 'factor_flash_1.2.png' },
+        { kind: 'O', value: 1.68, name: '逐渐减速 1.68', icon: 'factor_grad_decel_1.68.png' },
+        { kind: 'O', value: 7.5, name: '轻盈一击 7.5', icon: 'factor_lightshot_7.5.png' },
+        { kind: 'O', value: 2.5, name: '加速 2.5', icon: 'factor_accel_2.5.png' },
+        { kind: 'O', value: 2, name: '蛇形/混沌轨迹 2', icon: 'factor_chaos_2.png' },
+      ];
+      const OTHERS = FACTOR_INFO.filter(f => f.kind === 'O');
+      const BY_VALUE = new Map(FACTOR_INFO.map(f => [String(f.value), f]));
+      function factorOf(v) { return BY_VALUE.get(String(v)); }
+
+      /** 每步钳制：乘一个因子 → min(max(x * v, 0), 20) */
+      function clampStep(x, v) {
+        const p = x * v;
+        if (p < 0) return 0;
+        if (p > 20) return 20;
+        return p;
+      }
+
+      /** 组合数生成：itertools.combinations_with_replacement 等价，返回 others 索引数组 */
+      function* combWithRep(n, k) {
+        if (k === 0) { yield []; return; }
+        const stack = [];
+        for (let i = 0; i < k; i++) stack.push(0);
+        while (true) {
+          yield stack.slice();
+          let p = k - 1;
+          while (p >= 0 && stack[p] === n - 1) p--;
+          if (p < 0) return;
+          const nv = stack[p] + 1;
+          for (let q = p; q < k; q++) stack[q] = nv;
+        }
+      }
+
+      /**
+       * 在每步钳制规则下，计算「起始 + 法杖 + 粘液弹 + 普通因子序列」的最终值及中间钳制步骤。
+       * @returns {{product: number, steps: Array<{factor: string, before: number, after: number}>}}
+       */
+      function evalChain({ startFactor, staff, slime, others }) {
+        // startFactor: 1 或 20（20 即"起始钳制因子"）
+        let x = startFactor;
+        const steps = [];
+        if (startFactor === 20) {
+          steps.push({ factor: '20 起始', before: 1, after: 20 });
+        }
+        // 法杖（枚举 或 固定 1）
+        if (staff) {
+          const before = x;
+          x = clampStep(x, staff.value);
+          steps.push({ factor: `法杖 ×${staff.value}`, before, after: x });
+        }
+        // 粘液弹 1.1
+        if (slime) {
+          const before = x;
+          x = clampStep(x, slime.value);
+          steps.push({ factor: slime.name, before, after: x });
+        }
+        // 普通因子（顺序不影响结果数值，为一致从左至右顺序求值）
+        for (const f of others) {
+          const before = x;
+          x = clampStep(x, f.value);
+          steps.push({ factor: f.name, before, after: x });
+        }
+        return { product: x, steps };
+      }
+
+      /**
+       * 搜索 target 的分解方案（v0.5 算法）。
+       * @param {{
+       *  target: number,
+       *  staffCandidates: Array<{kind:string,value:number,name:string,icon:string}|null>,  // 法杖枚举列表（已包含 1=null 或各种 A）
+       *  allowSlime: boolean,
+       *  maxCount: number,       // 限制：普通因子9项 + 若用20起始(+1)，法杖与粘液弹不占
+       *  errMode: 'rel'|'abs',
+       *  tol: number,            // rel: 0~0.5 (0~50% 分数), abs: 像素数绝对值
+       *  D: number,              // 目标距离，用于 abs 模式的像素数判定
+       *  baseValue: number,      // v1 * 指数乘积，用于 abs 模式
+       *  allowClamp20: boolean,
+       * }} opts
+       * @returns {Array<{product, relErr, absErr, deltaPx, factors, is20Start, onlyFactorCount, steps}>}
+       */
+      function solveAlpha(opts) {
+        const solutions = [];
+        const target = opts.target;
+
+        // 候选起始：先"不带20起始"，再"带20起始"（allowClamp20 时）
+        const starts = opts.allowClamp20 ? [1, 20] : [1];
+
+        // 粘液弹可选（不计入 maxCount）
+        const slimeList = opts.allowSlime ? [null, FACTOR_INFO[2]] : [null];
+
+        for (const start of starts) {
+          // Q3B：20 起始占 maxCount 1 个名额 → 普通因子 k 上限 = maxCount - (start===20 ? 1 : 0)
+          const kMax = Math.max(0, opts.maxCount - (start === 20 ? 1 : 0));
+          for (const staff of opts.staffCandidates) {
+            for (const slime of slimeList) {
+              for (let k = 0; k <= kMax; k++) {
+                if (k === 0) {
+                  evalCandidate(start, staff, slime, []);
+                  continue;
+                }
+                for (const idxArr of combWithRep(OTHERS.length, k)) {
+                  const sel = idxArr.map(i => OTHERS[i]);
+                  evalCandidate(start, staff, slime, sel);
+                }
+              }
+            }
+          }
+        }
+
+        function evalCandidate(start, sUse, slUse, otherSel) {
+          const chain = evalChain({
+            startFactor: start,
+            staff: sUse,
+            slime: slUse,
+            others: otherSel,
+          });
+          const prod = chain.product;
+          const absErr = Math.abs(prod - target);
+          const relErr = target === 0 ? absErr : (absErr / target);
+
+          let pass = false;
+          if (opts.errMode === 'rel') {
+            pass = relErr <= opts.tol;
+          } else {
+            // abs 模式：像素数偏差 < tol
+            const deltaPx = Math.abs(opts.baseValue * prod - opts.D);
+            pass = deltaPx <= opts.tol;
+          }
+
+          if (pass) {
+            const factorsArr = [];
+            if (start === 20) {
+              factorsArr.push({ kind: 'C', value: 20, name: '20 起始（钳制）', icon: null });
+            }
+            if (sUse) factorsArr.push(sUse);
+            if (slUse) factorsArr.push(slUse);
+            for (const f of otherSel) factorsArr.push(f);
+
+            // v0.5：onlyFactorCount = 普通因子9项个数 +（用了 20 起始则 +1）；法杖与粘液弹不计入
+            const onlyFactorCount = otherSel.length + (start === 20 ? 1 : 0);
+            solutions.push({
+              product: prod,
+              relErr, absErr,
+              deltaPx: Math.abs(opts.baseValue * prod - opts.D),
+              factors: factorsArr,
+              is20Start: (start === 20),
+              onlyFactorCount,
+              steps: chain.steps,
+            });
+          }
+        }
+
+        // 去重：同乘积 + 同 factors 组合（按 value 排序）
+        const seen = new Set();
+        const unique = [];
+        for (const s of solutions) {
+          const staffValStr = s.factors.find(f => f.kind === 'A')
+            ? String(s.factors.find(f => f.kind === 'A').value)
+            : '1';
+          const key = (s.is20Start ? '20|' : '') +
+            staffValStr + '|' +
+            (s.factors.find(f => f.kind === 'B') ? '1.1|' : '|') +
+            s.factors.filter(f => f.kind === 'O').map(f => f.value).sort((x, y) => x - y).join('*');
+          if (!seen.has(key)) { seen.add(key); unique.push(s); }
+        }
+        return unique;
+      }
+
+      /* ========== v0.6：复制普通因子 ========== */
+
+      /**
+       * 检查 N 是否为「正则数」（5-smooth / regular number）：
+       * 质因数分解只含 2 / 3 / 5。
+       */
+      function isRegularNumber(n) {
+        n = Math.floor(Math.abs(n));
+        if (n < 1) return false;
+        for (const p of [2, 3, 5]) {
+          while (n % p === 0) n = n / p;
+        }
+        return n === 1;
+      }
+
+      /** 把正整数分解为 2/3/5 的幂（用于显示），非正则数返回 null */
+      function factorizeRegular(n) {
+        n = Math.floor(Math.abs(n));
+        if (n < 1 || !isRegularNumber(n)) return null;
+        const pw = { 2: 0, 3: 0, 5: 0 };
+        for (const p of [2, 3, 5]) while (n % p === 0) { pw[p]++; n /= p; }
+        const sup = (e) => e > 1 ? '<sup>' + e + '</sup>' : '';
+        return [2, 3, 5].filter(p => pw[p] > 0)
+          .map(p => p + sup(pw[p])).join('×');
+      }
+
+      /**
+       * v0.6：启用复制普通因子时的搜索。
+       * 每个普通因子可选「不选」或「选且复制 1..N 次」；选中的因子及其复制视为同一个普通因子（onlyFactorCount 计 1）。
+       * 每步钳制到 ≤ 20；>1 的因子乘积饱和后停止增加指数（剪枝）。
+       * 含节点数 & 时间限制，超时返回已找到的部分解（数组 .aborted = true）。
+       */
+      function solveAlphaWithCopy(opts) {
+        const solutions = [];
+        const target = opts.target;
+        const copyN = Math.max(1, Math.min(800, Math.floor(opts.copyN) || 100));
+        const starts = opts.allowClamp20 ? [1, 20] : [1];
+        const slimeList = opts.allowSlime ? [null, FACTOR_INFO[2]] : [null];
+
+        // v0.6 增补：每个因子的复制次数同样须仅含质因数 2/3/5，
+        // 故只枚举 1..copyN 内的正则数（如 ×51 含 17，不合理，不枚举）。
+        const regularExps = [];
+        const regSet = new Set();
+        for (let i = 1; i <= copyN; i++) {
+          if (isRegularNumber(i)) { regularExps.push(i); regSet.add(i); }
+        }
+
+        let nodeCount = 0;
+        const NODE_LIMIT = 8000000; // 800 万节点
+        const tStart = Date.now();
+        const TIME_LIMIT = 8000;    // 8 秒
+        let aborted = false;
+
+        function evalCopy(prod, steps, selected, start, staff, slime) {
+          const absErr = Math.abs(prod - target);
+          const relErr = target === 0 ? absErr : (absErr / target);
+          let pass = false;
+          if (opts.errMode === 'rel') {
+            pass = relErr <= opts.tol;
+          } else {
+            pass = Math.abs(opts.baseValue * prod - opts.D) <= opts.tol;
+          }
+          if (!pass) return;
+          const factorsArr = [];
+          if (start === 20) factorsArr.push({ kind: 'C', value: 20, name: '20 起始（钳制）', icon: null });
+          if (staff) factorsArr.push(staff);
+          if (slime) factorsArr.push(slime);
+          for (const it of selected) factorsArr.push(Object.assign({}, it.factor, { exp: it.exp }));
+          const onlyFactorCount = selected.length + (start === 20 ? 1 : 0);
+          solutions.push({
+            product: prod, relErr, absErr,
+            deltaPx: Math.abs(opts.baseValue * prod - opts.D),
+            factors: factorsArr,
+            is20Start: (start === 20),
+            onlyFactorCount,
+            steps,
+            isCopy: true,
+          });
+        }
+
+        for (const start of starts) {
+          if (aborted) break;
+          const kMax = Math.max(0, opts.maxCount - (start === 20 ? 1 : 0));
+          for (const staff of opts.staffCandidates) {
+            if (aborted) break;
+            for (const slime of slimeList) {
+              if (aborted) break;
+              const baseChain = evalChain({ startFactor: start, staff, slime, others: [] });
+              const baseProd = baseChain.product;
+              const baseSteps = baseChain.steps.slice();
+
+              // DFS：对 OTHERS 每个因子决定「不选」或「选且指数 e=1..copyN」
+              const dfs = (factorIdx, usedCount, curProd, curSteps, selected) => {
+                if (aborted) return;
+                if (++nodeCount > NODE_LIMIT || (Date.now() - tStart) > TIME_LIMIT) {
+                  aborted = true; return;
+                }
+                if (factorIdx >= OTHERS.length || usedCount >= kMax) {
+                  evalCopy(curProd, curSteps, selected, start, staff, slime);
+                  return;
+                }
+                const f = OTHERS[factorIdx];
+                // 分支 0：不选该因子
+                dfs(factorIdx + 1, usedCount, curProd, curSteps, selected);
+                // 分支 1..N：选该因子，复制 mc 次（累积相乘，每步钳制；仅在 mc 为正则数时评估）
+                if (usedCount < kMax) {
+                  let p = curProd;
+                  for (let mc = 1; mc <= copyN; mc++) {
+                    const before = p;
+                    p = clampStep(p, f.value);
+                    if (p === before) break; // 饱和剪枝：乘积不再变化
+                    if (!regSet.has(mc)) continue; // 非正则数（如 7/51）跳过，不作为复制次数
+                    const stepEntry = { factor: f.name + (mc > 1 ? ' ×' + mc : ''), before, after: p };
+                    curSteps.push(stepEntry);
+                    dfs(factorIdx + 1, usedCount + 1, p, curSteps, selected.concat([{ factor: f, exp: mc }]));
+                    curSteps.pop();
+                  }
+                }
+              };
+              dfs(0, 0, baseProd, baseSteps, []);
+            }
+          }
+        }
+
+        // 去重（含指数）
+        const seen = new Set();
+        const unique = [];
+        for (const s of solutions) {
+          const staffValStr = s.factors.find(f => f.kind === 'A')
+            ? String(s.factors.find(f => f.kind === 'A').value) : '1';
+          const oParts = s.factors.filter(f => f.kind === 'O')
+            .map(f => f.value + (f.exp > 1 ? '^' + f.exp : ''))
+            .sort().join('*');
+          const key = (s.is20Start ? '20|' : '') + staffValStr + '|' +
+            (s.factors.find(f => f.kind === 'B') ? '1.1|' : '|') + oParts;
+          if (!seen.has(key)) { seen.add(key); unique.push(s); }
+        }
+        unique.aborted = aborted;
+        return unique;
+      }
+
+      // ============ DOM 辅助 ============
+      const $ = sel => document.querySelector(sel);
+      const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+      // v0.6：装饰层 img 用 data-icon + iconUrl 设置 src（支持 base64 内嵌）
+      $$('img[data-icon]').forEach(img => {
+        img.src = iconUrl(img.dataset.icon);
+      });
+
+      // ============ 距离预设切换 ============
+      $$('input[name="distPreset"]').forEach(r => {
+        r.addEventListener('change', () => {
+          const v = $('input[name="distPreset"]:checked').value;
+          const el = $('#distCustom');
+          if (v === 'ng0') { el.value = 35840; el.disabled = true; }
+          else if (v === 'ng1') { el.value = 32768; el.disabled = true; }
+          else { el.disabled = false; el.focus(); }
+        });
+      });
+
+      // ============ 误差模式切换（显示 label 不同） ============
+      $$('input[name="errMode"]').forEach(r => {
+        r.addEventListener('change', () => {
+          const m = $('input[name="errMode"]:checked').value;
+          const lbl = $('#tolLbl');
+          const inp = $('#tolerance');
+          if (m === 'rel') {
+            lbl.textContent = '允许相对误差 %（0 ~ 50）';
+            inp.value = 1; inp.min = 0; inp.max = 50; inp.step = 0.1;
+          } else {
+            lbl.textContent = '允许绝对像素数偏差（例如 500）';
+            inp.value = 500; inp.min = 0; inp.max = 200000; inp.step = 1;
+          }
+        });
+      });
+
+      // ============ 额外指数级乘数 chip ============
+      function renderExtra(list) {
+        const box = $('#extraExpList');
+        box.innerHTML = '';
+        list.forEach((item, i) => {
+          const chip = document.createElement('div');
+          chip.className = 'chip';
+          chip.innerHTML = `
+        <span>底数</span>
+        <input type="number" step="0.01" min="0.01" value="${item.base}" data-i="${i}" data-f="base">
+        <span>^</span>
+        <input type="number" step="1" min="0" value="${item.exp}" data-i="${i}" data-f="exp">
+        <button type="button" data-i="${i}" data-act="del" title="删除">✕</button>`;
+          box.appendChild(chip);
+        });
+      }
+      let extraArr = [];
+      renderExtra(extraArr);
+      $('#addExtraBtn').addEventListener('click', () => {
+        extraArr.push({ base: 1.1, exp: 2 });
+        renderExtra(extraArr);
+      });
+      $('#extraExpList').addEventListener('input', e => {
+        const t = e.target;
+        if (t.tagName === 'INPUT') {
+          const i = +t.dataset.i;
+          const v = parseFloat(t.value);
+          if (!isNaN(v)) {
+            if (t.dataset.f === 'base') extraArr[i].base = v;
+            else extraArr[i].exp = Math.max(0, Math.floor(v));
+          }
+        }
+      });
+      $('#extraExpList').addEventListener('click', e => {
+        if (e.target.dataset.act === 'del') {
+          const i = +e.target.dataset.i;
+          extraArr.splice(i, 1);
+          renderExtra(extraArr);
+        }
+      });
+
+      // ============ 计算结果的全局状态（用于分页/排序切换重渲染，不重新计算） ============
+      let lastResult = null; // { sols, D, baseValue, showIcons }
+
+      // 法杖倍率切换 → 立即重算
+      $$('input[name="staff"]').forEach(r => {
+        r.addEventListener('change', () => {
+          if (lastResult) $('#calcBtn').click();
+        });
+      });
+      // 粘液弹 1.1 切换 → 立即重算
+      $('#withSlime').addEventListener('change', () => {
+        if (lastResult) $('#calcBtn').click();
+      });
+      // 排序切换 → 立即重渲染（不需重算）
+      $$('input[name="sortMode"]').forEach(r => {
+        r.addEventListener('change', () => {
+          if (lastResult) renderAll();
+        });
+      });
+      // 每页大小 → 立即重渲染
+      $$('input[name="pageSize"]').forEach(r => {
+        r.addEventListener('change', () => {
+          if (lastResult) { state.page = 0; renderAll(); }
+        });
+      });
+      // 图标显示开关 → 立即重渲染
+      $('#showIcons').addEventListener('change', () => {
+        if (lastResult) { lastResult.showIcons = $('#showIcons').checked; renderAll(); }
+      });
+
+      // v0.6：复制普通因子开关 → 展开参数 + 显示警告
+      $('#enableCopy').addEventListener('change', () => {
+        const on = $('#enableCopy').checked;
+        $('#copyParams').classList.toggle('active', on);
+        $('#copyWarnBadge').style.display = on ? 'inline-block' : 'none';
+        $('#copyN').disabled = !on;
+        if (on) validateCopyN();
+      });
+
+      // v0.6：N 输入实时校验质因数（仅含 2/3/5）
+      function validateCopyN() {
+        const raw = parseInt($('#copyN').value, 10);
+        const hint = $('#copyNHint');
+        if (isNaN(raw) || raw < 1) {
+          hint.className = 'hint err';
+          hint.textContent = 'N 必须为正整数。';
+          return false;
+        }
+        if (raw > 800) {
+          hint.className = 'hint err';
+          hint.textContent = 'N 不能超过 800。';
+          return false;
+        }
+        if (!isRegularNumber(raw)) {
+          hint.className = 'hint err';
+          hint.textContent = '复制次数上限不合理：N = ' + raw + ' 的质因数分解不只含 2/3/5。';
+          return false;
+        }
+        const fz = factorizeRegular(raw);
+        hint.className = 'hint ok';
+        hint.innerHTML = '当前 N = ' + raw + ' = ' + (fz || '1') + '，质因数仅含 2/3/5 ✓';
+        return true;
+      }
+      $('#copyN').addEventListener('input', validateCopyN);
+
+      // 分页状态
+      const state = { page: 0 };
+
+      // ============ 主要计算按钮 ============
+      $('#calcBtn').addEventListener('click', () => {
+        const btn = $('#calcBtn'); btn.disabled = true;
+        const prog = $('#progBar'); prog.classList.add('active');
+        const progBar = prog.firstElementChild;
+        progBar.style.width = '10%';
+
+        // 读输入
+        const D = Math.max(1, parseInt($('#distCustom').value, 10) || 0);
+        const nUpdown = Math.max(0, parseInt($('#updownCount').value, 10) || 0);
+        const maxCount = Math.max(0, Math.min(12, parseInt($('#maxCount').value, 10) || 0));
+        const errMode = $('input[name="errMode"]:checked').value; // 'rel' | 'abs'
+        const tolRaw = parseFloat($('#tolerance').value) || 0;
+        const tol = (errMode === 'rel')
+          ? Math.max(0, Math.min(0.5, tolRaw / 100))   // 输入是 % 数值 → 分数
+          : Math.max(0, tolRaw);                       // 像素数绝对值
+        const showIcons = $('#showIcons').checked;
+        const allowClamp = $('#allowClamp20').checked;
+        const allowSlime = $('#withSlime').checked;
+        const enableCopy = $('#enableCopy').checked;
+        const copyNRaw = Math.max(1, Math.min(800, parseInt($('#copyN').value, 10) || 100));
+        const staffMode = $('input[name="staff"]:checked').value; // 'none' | 'unlimit'
+        // 构造法杖枚举候选人
+        let staffCandidates;
+        if (staffMode === 'none') {
+          // 无加成：仅 1 种（不乘法杖倍率）
+          staffCandidates = [null];
+        } else {
+          // 不限制加成：三选一互斥（不加成 / 1.25 / 1.5）
+          staffCandidates = [null, FACTOR_INFO[0], FACTOR_INFO[1]];
+        }
+
+        progBar.style.width = '30%';
+        setTimeout(() => {
+          // 计算指数乘积
+          let expProd = Math.pow(1.2, nUpdown);
+          const expTermStrings = [];
+          if (nUpdown > 0) expTermStrings.push(`1.2^${nUpdown}`);
+          for (const it of extraArr) {
+            if (it.exp >= 0 && it.base > 0) {
+              const term = Math.pow(it.base, it.exp);
+              expProd *= term;
+              if (it.exp !== 0) expTermStrings.push(`${fmt(it.base)}^${it.exp}`);
+            }
+          }
+          const baseValue = V1 * expProd;
+
+          progBar.style.width = '50%';
+
+          // 反推 alpha_other
+          const targetAlpha = D / baseValue;
+          if (targetAlpha <= 0 || !isFinite(targetAlpha)) {
+            renderError('指数乘积无效或为 0，请调整指数。');
+            resetCalcBtn(); return;
+          }
+
+          progBar.style.width = '70%';
+
+          // v0.6：搜索分解（启用复制时走 solveAlphaWithCopy）
+          let solsUnsort;
+          let copyAborted = false;
+          if (enableCopy) {
+            // 校验 N 是否为正则数（质因数仅含 2/3/5）
+            if (!isRegularNumber(copyNRaw)) {
+              renderError('复制次数上限不合理：N 的质因数分解必须只含有因数 2 / 3 / 5。');
+              resetCalcBtn(); return;
+            }
+            solsUnsort = solveAlphaWithCopy({
+              target: targetAlpha,
+              staffCandidates,
+              allowSlime,
+              maxCount,
+              errMode, tol, D, baseValue,
+              allowClamp20: allowClamp,
+              copyN: copyNRaw,
+            });
+            copyAborted = !!solsUnsort.aborted;
+          } else {
+            solsUnsort = solveAlpha({
+              target: targetAlpha,
+              staffCandidates,
+              allowSlime,
+              maxCount,
+              errMode, tol, D, baseValue,
+              allowClamp20: allowClamp,
+            });
+          }
+
+          progBar.style.width = '100%';
+
+          // 保存结果（后续切换分页/排序不用重新搜索）
+          lastResult = {
+            sols: solsUnsort, D, baseValue, expProd, expTermStrings,
+            targetAlpha, showIcons, errMode, tolRaw,
+            enableCopy, copyN: copyNRaw, copyAborted,
+          };
+          state.page = 0;
+
+          renderSummary();
+          renderAll();
+
+          setTimeout(() => { prog.classList.remove('active'); progBar.style.width = '0'; resetCalcBtn(); }, 300);
+        }, 30);
+
+        function resetCalcBtn() { btn.disabled = false; }
+      });
+
+      function renderError(msg) {
+        $('#sDist').textContent = '—'; $('#sBase').textContent = '—'; $('#sAlpha').textContent = '—';
+        const e = $('#sErr'); e.textContent = msg; e.className = 'val err';
+        $('#solutionsWrap').innerHTML = `<div class="empty">${msg}</div>`;
+        $('#pagerTop').style.display = 'none'; $('#pagerBottom').style.display = 'none';
+        lastResult = null;
+      }
+
+      function fmt(x, digits = 4) {
+        if (Math.abs(x) >= 10000) return x.toExponential(3);
+        return Number(x.toFixed(digits)).toString();
+      }
+      function fmtInt(x) { return Math.round(x).toLocaleString('zh-CN'); }
+
+      function factorValueStr(v) {
+        // 与教程显示一致：直接书写已知小数
+        switch (v) {
+          case 7.5: return '7.5';
+          case 2.5: return '2.5';
+          case 1.68: return '1.68';
+          case 0.33: return '0.33';
+          case 0.32: return '0.32';
+          case 0.3: return '0.3';
+          case 0.75: return '0.75';
+          case 1.25: return '1.25';
+          case 1.5: return '1.5';
+          case 1.1: return '1.1';
+          case 1.2: return '1.2';
+          case 2: return '2';
+          case 20: return '20';
+          case 1: return '1';
+          default: return fmt(v, 4);
+        }
+      }
+
+      function sortedSolutions() {
+        if (!lastResult) return [];
+        const arr = lastResult.sols.slice();
+        const mode = $('input[name="sortMode"]:checked').value;
+        if (mode === 'err') {
+          arr.sort((a, b) => a.relErr - b.relErr
+            || a.onlyFactorCount - b.onlyFactorCount
+            || (a.is20Start ? 1 : 0) - (b.is20Start ? 1 : 0));
+        } else {
+          arr.sort((a, b) => a.onlyFactorCount - b.onlyFactorCount
+            || a.relErr - b.relErr
+            || (a.is20Start ? 1 : 0) - (b.is20Start ? 1 : 0));
+        }
+        return arr;
+      }
+
+      function renderSummary() {
+        if (!lastResult) return;
+        const { D, baseValue, expTermStrings, targetAlpha } = lastResult;
+        $('#sDist').textContent = `${fmtInt(D)} 像素`;
+        const e1 = expTermStrings.length
+          ? `7.92 · ${expTermStrings.map(s => `(${s})`).join(' · ')}`
+          : '7.92';
+        $('#sBase').innerHTML = `${fmt(baseValue)} <span class="small">(${e1})</span>`;
+        $('#sAlpha').textContent = fmt(targetAlpha, 6);
+
+        const sorted = sortedSolutions();
+        if (sorted.length) {
+          const best = sorted[0];
+          const distAchieved = lastResult.baseValue * best.product;
+          const deltaPx = distAchieved - lastResult.D;
+          const m = $('#sErr');
+          const clr = Math.abs(deltaPx) <= 5 ? 'ok' : (Math.abs(deltaPx) <= 100 ? 'warn' : 'err');
+          m.className = `val ${clr}`;
+          const sign = deltaPx >= 0 ? '+' : '−';
+          m.innerHTML = `${sign}${fmtInt(Math.abs(deltaPx))} px <span class="small">(rel ${(best.relErr * 100).toFixed(3)}%)</span>`;
+        } else {
+          const m = $('#sErr');
+          m.className = 'val err';
+          m.innerHTML = `未找到分解 <span class="small">(请放宽误差 / 增加最大个数)</span>`;
+        }
+      }
+
+      function renderPager() {
+        const sols = sortedSolutions();
+        const total = sols.length;
+        const pagerT = $('#pagerTop');
+        const pagerB = $('#pagerBottom');
+        if (!total) {
+          pagerT.style.display = 'none'; pagerB.style.display = 'none';
+          return;
+        }
+        const pageSize = parseInt($('input[name="pageSize"]:checked').value, 10);
+        const pages = Math.max(1, Math.ceil(total / pageSize));
+        if (state.page >= pages) state.page = pages - 1;
+        if (state.page < 0) state.page = 0;
+
+        function buildPager(which) {
+          which.style.display = 'flex';
+          which.innerHTML = '';
+          const left = document.createElement('div'); left.className = 'row';
+          const right = document.createElement('div'); right.className = 'row';
+
+          // 左：排序 label（仅顶部）
+          if (which === pagerT) {
+            const tag = document.createElement('div');
+            tag.style.cssText = 'font-size:12px;color:var(--text-dim);';
+            tag.innerHTML = `排序：<b style="color:var(--accent)">${$('input[name="sortMode"]:checked').value === 'err' ? '误差优先' : '因子最少优先'
+              }</b> &nbsp;·&nbsp; 总方案 <b style="color:#fff">${total}</b> 个`;
+            left.appendChild(tag);
+          } else {
+            const tag = document.createElement('div');
+            tag.style.cssText = 'font-size:12px;color:var(--text-dim);';
+            tag.textContent = `第 ${state.page + 1} / ${pages} 页`;
+            left.appendChild(tag);
+          }
+
+          // 右：分页按钮
+          const pg = document.createElement('div'); pg.className = 'pager';
+          const prev = document.createElement('button');
+          prev.textContent = '‹ 上一页';
+          prev.disabled = state.page === 0;
+          prev.addEventListener('click', () => { state.page--; renderAll(); });
+          pg.appendChild(prev);
+
+          // 页码按钮（最多显示 7 个中间 + 首末）
+          const btns = [];
+          const p = state.page;
+          const add = (x) => btns.push(x);
+          const ell = () => { const s = document.createElement('span'); s.className = 'info'; s.textContent = '…'; pg.appendChild(s); };
+          add(0);
+          const lo = Math.max(1, p - 2), hi = Math.min(pages - 2, p + 2);
+          if (lo > 1) ell();
+          for (let i = lo; i <= hi; i++) add(i);
+          if (hi < pages - 2) ell();
+          if (pages > 1) add(pages - 1);
+
+          for (const n of btns) {
+            const b = document.createElement('button');
+            b.textContent = String(n + 1);
+            if (n === p) b.className = 'active';
+            b.addEventListener('click', () => { state.page = n; renderAll(); });
+            pg.appendChild(b);
+          }
+
+          const next = document.createElement('button');
+          next.textContent = '下一页 ›';
+          next.disabled = state.page >= pages - 1;
+          next.addEventListener('click', () => { state.page++; renderAll(); });
+          pg.appendChild(next);
+
+          right.appendChild(pg);
+          which.appendChild(left); which.appendChild(right);
+        }
+        buildPager(pagerT);
+        buildPager(pagerB);
+      }
+
+      function renderAll() {
+        renderPager();
+        const sols = sortedSolutions();
+        const pageSize = parseInt($('input[name="pageSize"]:checked').value, 10);
+        const start = state.page * pageSize;
+        const pageSols = sols.slice(start, start + pageSize);
+        renderSolutions(pageSols, start);
+        renderSummary();
+      }
+
+      function renderSolutions(sols, offsetIdx) {
+        const wrap = $('#solutionsWrap');
+        if (!lastResult) return;
+        if (!sols.length) {
+          wrap.innerHTML = `<div class="empty">
+        未在当前设置下找到分解方案。<br>
+        建议：<b>1.</b> 把「允许误差」调大一点 &nbsp; <b>2.</b> 把「最大修正个数」往上调 &nbsp; <b>3.</b> 确认 α<sub>other</sub> 在合理范围（每步 ≤20）&nbsp; <b>4.</b> 尝试将上/下飞的数量调整到合适的范围。
+      </div>`;
+          return;
+        }
+
+        const list = document.createElement('div');
+        list.className = 'solutions-list';
+        const { D, baseValue, showIcons } = lastResult;
+
+        // v0.6：复制模式搜索超时提示
+        if (lastResult.copyAborted) {
+          const warn = document.createElement('div');
+          warn.className = 'decompose';
+          warn.style.cssText = 'border-color:rgba(251,191,36,0.6);background:rgba(251,191,36,0.08)';
+          warn.innerHTML = '<div class="hint warn" style="margin:0">⚠ 复制因子搜索已达节点/时间上限，以下为已找到的部分方案。建议减小 N 或最大修正个数以获取完整结果。</div>';
+          list.appendChild(warn);
+        }
+
+        sols.forEach((s, k) => {
+          const idx = offsetIdx + k + 1;
+          const distAchieved = baseValue * s.product;
+          const deltaPx = distAchieved - D;
+          const card = document.createElement('div');
+          card.className = 'decompose';
+
+          const head = document.createElement('div');
+          head.className = 'decompose-head';
+          const rank = document.createElement('div');
+          rank.className = 'title';
+          rank.textContent = `方案 #${idx}`;
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const sign = deltaPx >= 0 ? '+' : '−';
+          meta.innerHTML = `乘积 = <b>${fmt(s.product, 6)}</b> &nbsp;·&nbsp;
+        相对误差 = <b>${(s.relErr * 100).toFixed(3)}%</b> &nbsp;·&nbsp;
+        偏差像素 = <b>${sign}${fmtInt(Math.abs(deltaPx))} px</b> &nbsp;·&nbsp;
+        普通因子数 = <b>${s.onlyFactorCount}</b>`;
+          head.appendChild(rank); head.appendChild(meta);
+          card.appendChild(head);
+
+          // 数字乘法公式（v0.6：复制因子 exp>1 时显示为 0.3^10 上标）
+          const formula = document.createElement('div');
+          formula.className = 'formula';
+          const parts = s.factors.map(f => {
+            const v = factorValueStr(f.value);
+            const e = (f.exp && f.exp > 1) ? f.exp : 0;
+            return e ? v + '<sup>' + e + '</sup>' : v;
+          });
+          formula.innerHTML = parts.length ? parts.join(' × ') : '1 (无额外修正)';
+          card.appendChild(formula);
+
+          // 图标 chips（不带乘号）
+          if (showIcons) {
+            const row = document.createElement('div');
+            row.className = 'factors-row';
+            if (!s.factors.length) {
+              const tip = document.createElement('div');
+              tip.className = 'empty';
+              tip.style.cssText = 'padding:6px 10px; border:none; background:transparent';
+              tip.textContent = '(无因子 — 仅使用指数部分)';
+              row.appendChild(tip);
+            }
+            s.factors.forEach(f => {
+              const chip = document.createElement('div');
+              chip.className = 'factor-chip';
+              // 颜色角点（替代 special a/b 文字）
+              let dotHtml = '';
+              if (f.kind === 'A') dotHtml = '<span class="dot a" title="法杖倍率"></span>';
+              else if (f.kind === 'B') dotHtml = '<span class="dot b" title="粘液弹 1.1"></span>';
+              else if (f.kind === 'C') dotHtml = '<span class="dot c" title="起始 20 钳制"></span>';
+
+              const iconSrc = f.icon ? iconUrl(f.icon) : '';
+              const iconHtml = iconSrc
+                ? `<img alt="" src="${iconSrc}" onerror="this.style.visibility='hidden'">`
+                : `<span style="width:22px;height:22px;display:inline-block;background:#1c1438;border:1px solid #3a2c6a;border-radius:5px"></span>`;
+              const numStr = factorValueStr(f.value);
+              const hasExp = (f.exp && f.exp > 1);
+              const expBadge = hasExp ? `<span class="exp-badge" title="复制 ${f.exp} 次">×${f.exp}</span>` : '';
+              chip.title = `${f.name} ×${numStr}` + (hasExp ? `（复制 ${f.exp} 次）` : '');
+              chip.innerHTML = `${dotHtml}${iconHtml}<span class="num">×${numStr}</span>${expBadge}`;
+              row.appendChild(chip);
+            });
+            card.appendChild(row);
+          }
+
+          list.appendChild(card);
+        });
+
+        wrap.innerHTML = ''; wrap.appendChild(list);
+      }
+
+      /* ========== 自检 ========== */
+      function runSelfTests() {
+        const out = $('#selfTestOut');
+        let buf = '';
+        function log(line) { buf += (line || '') + '\n'; }
+        function head(title) { log(`\n── ${title} ${'─'.repeat(Math.max(2, 72 - title.length))}`); }
+
+        let passN = 0, totalN = 0;
+
+        head('(T1) 常量：V1 = 7.92（游戏小数截断后实际使用）');
+        totalN++;
+        if (Math.abs(V1 - 7.92) < 1e-9) { log('  ✓ V1 = 7.92 — OK'); passN++; }
+        else { log(`  ✗ FAIL: V1 = ${V1}`); }
+        log('  NG+0=35840, NG+1=32768');
+
+        head('(T2) 每步钳制 ≤ 20 验证');
+        const casesStep = [
+          { start: 20, staff: 1.25, slime: true, others: [7.5], expectMax: 20, desc: '20起始→法杖×1.25→粘液弹→轻盈一击（中间任一步都 ≤20）' },
+          { start: 1, staff: 1.5, slime: true, others: [7.5, 2.5, 2, 2], expectMax: 20, desc: '普通场景（多个大因子相乘）最后钳制到 20' },
+        ];
+        for (const c of casesStep) {
+          totalN++;
+          const staffF = (c.staff === 1.25) ? FACTOR_INFO[0] : ((c.staff === 1.5) ? FACTOR_INFO[1] : null);
+          const slimeF = c.slime ? FACTOR_INFO[2] : null;
+          const oths = c.others.map(v => factorOf(v)).filter(Boolean);
+          const chain = evalChain({ startFactor: c.start, staff: staffF, slime: slimeF, others: oths });
+          const maxStep = Math.max(...chain.steps.map(s => s.after), chain.product);
+          const minStep = Math.min(...chain.steps.map(s => s.after), chain.product);
+          const ok = maxStep <= 20 + 1e-9 && minStep >= -1e-9;
+          log(`  [${ok ? '✓' : '✗'}] ${c.desc}`);
+          for (const st of chain.steps) log(`       step ${st.factor.padEnd(18)}: ${fmt(st.before, 6)}  →  ${fmt(st.after, 6)}`);
+          log(`       最终乘积 = ${fmt(chain.product, 6)}, 步骤 max=${fmt(maxStep, 6)}`);
+          if (ok) passN++;
+        }
+
+        head('(T3) 分解回归（法杖 unlimit 三选一，启用粘液弹，maxCount=5，允许 20 起始）');
+        const regCases = [
+          { target: 2.475, tol: 0.001, D: 1e6, staffCands: [null], desc: 'α=7.5×0.33=2.475（轻盈×相位，不钳制，法杖无）' },
+          { target: 4.2, tol: 0.001, D: 1e6, staffCands: [null], desc: 'α=2.5×1.68=4.2（加速×逐渐减速）' },
+          { target: 0.1056, tol: 0.001, D: 1e6, staffCands: [null], desc: 'α=0.33×0.32=0.1056（相位×逐渐加速）' },
+          { target: 1.375, tol: 0.001, D: 1e6, staffCands: [FACTOR_INFO[0]], allowSlime: true, desc: '法杖 1.25 × 粘液弹 1.1 = 1.375' },
+          { target: 4, tol: 0.001, D: 1e6, staffCands: [null], desc: 'α=2×2=4（两次蛇形）' },
+          { target: 0.9, tol: 0.001, D: 1e6, staffCands: [null], desc: 'α=0.75×1.2=0.9（易爆×闪灭）' },
+          { target: 5.625, tol: 0.001, D: 1e6, staffCands: [null], desc: 'α=7.5×2.5×0.3=5.625' },
+          { target: 3.024, tol: 0.001, D: 1e6, staffCands: [FACTOR_INFO[1]], desc: '法杖1.5 × 1.2 × 1.68 = 3.024' },
+          { target: 0.002, tol: 1e-5, D: 1e6, staffCands: [null], expectNone: true, desc: 'α=0.002 无解' },
+        ];
+        for (const c of regCases) {
+          totalN++;
+          const sols = solveAlpha({
+            target: c.target, staffCandidates: c.staffCands,
+            allowSlime: !!c.allowSlime, maxCount: 5,
+            errMode: 'rel', tol: c.tol,
+            D: c.D, baseValue: 1,
+            allowClamp20: true,
+          });
+          // 按误差优先排序
+          const sorted = sols.slice().sort((a, b) => a.relErr - b.relErr || a.onlyFactorCount - b.onlyFactorCount);
+          const best = sorted[0];
+          const ok = best && !c.expectNone ? best.relErr <= c.tol : (c.expectNone ? !best : false);
+          log(`  [${ok ? '✓' : '✗'}] ${c.desc}`);
+          if (best) {
+            const fs = best.factors.map(f => factorValueStr(f.value)).join(' * ') || '1';
+            log(`       顶解 ${fs} = ${fmt(best.product, 8)}, relErr=${(best.relErr * 100).toFixed(4)}%, 计入因子数(普+20)=${best.onlyFactorCount}`);
+          } else log('       无解');
+          if (ok) passN++;
+        }
+
+        head('(T4) 经典场景：NG+0=35840，40 个上下飞（v0.5 默认值），法杖=不限制加成，启用粘液弹');
+        {
+          totalN++;
+          const D = 35840;
+          const base = V1 * Math.pow(1.2, 40);
+          const alpha = D / base;
+          log(`  v1 · 1.2^40 = ${fmt(base, 6)}`);
+          log(`  反推 α = ${fmt(alpha, 8)}`);
+          const sols = solveAlpha({
+            target: alpha,
+            staffCandidates: [null, FACTOR_INFO[0], FACTOR_INFO[1]], // 不限制加成三选一
+            allowSlime: true, maxCount: 5,
+            errMode: 'rel', tol: 0.01,
+            D, baseValue: base,
+            allowClamp20: true,
+          });
+          sols.sort((a, b) => a.relErr - b.relErr || a.onlyFactorCount - b.onlyFactorCount);
+          const best = sols[0];
+          if (best) {
+            const fs = best.factors.map(f => factorValueStr(f.value)).join('*') || '1';
+            const achieved = base * best.product;
+            const delta = achieved - D;
+            log(`  最佳分解: ${fs} = ${fmt(best.product, 8)}  (relErr ${(best.relErr * 100).toFixed(4)}%)`);
+            log(`  实际距离 ${fmt(achieved, 2)} px，偏差 ${delta >= 0 ? '+' : '−'}${fmtInt(Math.abs(delta))} px`);
+            const anyOver = best.steps.some(s => s.after > 20 + 1e-9);
+            log(`  每步钳制检查：${anyOver ? '✗ 有步骤超20' : '✓ 全 ≤ 20'}`);
+            if (!anyOver) passN++;
+          } else {
+            log('  ⚠ 未找到分解，需增大 maxCount 或允许误差');
+          }
+        }
+
+        head('(T5) 误差模式：绝对像素数（tol=500px）');
+        {
+          totalN++;
+          const D = 35840;
+          const base = V1 * Math.pow(1.2, 40);
+          const sols = solveAlpha({
+            target: D / base,
+            staffCandidates: [null, FACTOR_INFO[0], FACTOR_INFO[1]],
+            allowSlime: true, maxCount: 5,
+            errMode: 'abs', tol: 500,
+            D, baseValue: base,
+            allowClamp20: true,
+          });
+          const anyWithin500 = sols.length > 0 && sols.every(s => Math.abs(base * s.product - D) <= 500 + 1e-9);
+          log(`  候选数 = ${sols.length}，全部方案像素偏差 ≤ 500：${anyWithin500 ? '✓' : '✗'}`);
+          if (sols.length) {
+            const first = sols[0];
+            const delta = Math.abs(base * first.product - D);
+            log(`  首方案偏差 ${fmtInt(delta)} px`);
+          }
+          if (anyWithin500) passN++;
+        }
+
+        head('(T6) 排序：因子最少优先（普通因子9项 + 20起始，法杖&粘液弹不计）');
+        {
+          totalN++;
+          const sols = solveAlpha({
+            target: 5.625,
+            staffCandidates: [null],
+            allowSlime: true, maxCount: 5,
+            errMode: 'rel', tol: 0.001,
+            D: 1e6, baseValue: 1,
+            allowClamp20: true,
+          });
+          sols.sort((a, b) => a.onlyFactorCount - b.onlyFactorCount || a.relErr - b.relErr);
+          const least = sols[0];
+          // 5.625 = 0.75*7.5 → onlyFactorCount=2（2个普通因子，不带20）
+          if (least && least.onlyFactorCount === 2) {
+            log(`  ✓ 最少计入因子数 = ${least.onlyFactorCount}（0.75 × 7.5，无需 20 起始，法杖&粘液弹不计）`);
+            passN++;
+          } else {
+            log(`  ✗ 失败，首方案计入因子数=${least ? least.onlyFactorCount : 'NONE'}，分解=${least ? least.factors.map(f => f.value).join('*') : '-'}`);
+          }
+        }
+
+        head('(T7) v0.5 规则：起始 20 占用 maxCount 1 个名额 & 计入 onlyFactorCount');
+        {
+          totalN++;
+          // target=20：不带 20 起始时，仅 1×9个普通因子任取1个都不可能=20（maxCount=1时 k=1普通因子）；带 20 起始时只有 20（没有普通）才命中。
+          const sols = solveAlpha({
+            target: 20,
+            staffCandidates: [null],
+            allowSlime: false,
+            maxCount: 1,
+            errMode: 'rel', tol: 0.0001,
+            D: 20, baseValue: 1,
+            allowClamp20: true,
+          });
+          const has20Start = sols.some(s => s.is20Start);
+          const okCount = sols.some(s => s.is20Start && s.onlyFactorCount === 1); // 20占1名额，只有20计入1个
+          // 另验证：没有普通因子被选中（20占了maxCount=1，kMax=0）
+          const noOthers = sols.filter(s => s.is20Start).every(s => s.factors.filter(f => f.kind === 'O').length === 0);
+          log(`  候选数=${sols.length}, 含20起始=${has20Start}, onlyFactorCount=1=${okCount}, 20起始无普通因子=${noOthers}`);
+          sols.slice(0, 3).forEach(s => {
+            log(`    分解=${s.factors.map(f => factorValueStr(f.value)).join('*')}, onlyFactorCount=${s.onlyFactorCount}, rel=${(s.relErr * 100).toFixed(4)}%`);
+          });
+          if (has20Start && okCount && noOthers) passN++;
+        }
+
+        // ====== v0.6：复制普通因子 ======
+        head('(T8) v0.6 isRegularNumber：N 质因数仅含 2/3/5 校验');
+        {
+          const regCases = [
+            { n: 100, expect: true, desc: '100 = 2²×5²' },
+            { n: 60, expect: true, desc: '60 = 2²×3×5' },
+            { n: 1, expect: true, desc: '1（空分解）' },
+            { n: 800, expect: true, desc: '800 = 2⁵×5²' },
+            { n: 7, expect: false, desc: '7（质数）' },
+            { n: 17, expect: false, desc: '17（质数）' },
+            { n: 801, expect: false, desc: '801 = 3²×89' },
+            { n: 14, expect: false, desc: '14 = 2×7' },
+          ];
+          let allOk = true;
+          for (const c of regCases) {
+            const r = isRegularNumber(c.n);
+            const ok = (r === c.expect);
+            if (!ok) allOk = false;
+            log(`  [${ok ? '✓' : '✗'}] isRegularNumber(${c.n}) = ${r}  (${c.desc})`);
+          }
+          totalN++;
+          if (allOk) passN++;
+        }
+
+        head('(T9) v0.6 复制因子：0.3^10 精确命中');
+        {
+          totalN++;
+          const target = Math.pow(0.3, 10);
+          const sols = solveAlphaWithCopy({
+            target, staffCandidates: [null], allowSlime: false,
+            maxCount: 1, errMode: 'rel', tol: 1e-6,
+            D: 1e6, baseValue: 1, allowClamp20: false, copyN: 10,
+          });
+          const best = sols.slice().sort((a, b) => a.relErr - b.relErr)[0];
+          const ok = best && best.relErr <= 1e-6 && best.onlyFactorCount === 1;
+          if (ok) {
+            const f0 = best.factors.find(f => f.kind === 'O');
+            log(`  ✓ 顶解 0.3^${f0.exp} = ${fmt(best.product, 10)}, relErr=${(best.relErr * 100).toFixed(6)}%, 因子数=${best.onlyFactorCount}`);
+            passN++;
+          } else {
+            log(`  ✗ 失败：${best ? 'relErr=' + best.relErr + ' 因子数=' + best.onlyFactorCount : '无解'}`);
+          }
+        }
+
+        head('(T10) v0.6 饱和剪枝：7.5² 钳制到 20，exp 不超过 2');
+        {
+          totalN++;
+          const sols = solveAlphaWithCopy({
+            target: 20, staffCandidates: [null], allowSlime: false,
+            maxCount: 1, errMode: 'rel', tol: 1e-6,
+            D: 20, baseValue: 1, allowClamp20: false, copyN: 100,
+          });
+          // 7.5^1=7.5, 7.5^2=56.25→钳制20。应存在 exp=2 的解，且无 exp≥3 的解（饱和剪枝）
+          const hasExp2 = sols.some(s => s.factors.some(f => f.value === 7.5 && f.exp === 2) && Math.abs(s.product - 20) < 1e-9);
+          const noExp3plus = sols.every(s => s.factors.every(f => !(f.value === 7.5 && f.exp >= 3)));
+          log(`  7.5²=20 命中=${hasExp2}, 无 exp≥3 重复=${noExp3plus}`);
+          if (hasExp2 && noExp3plus) passN++;
+        }
+
+        head('(T11) v0.6 复制+混合：0.3³ × 2 = 0.054');
+        {
+          totalN++;
+          const target = Math.pow(0.3, 3) * 2;
+          const sols = solveAlphaWithCopy({
+            target, staffCandidates: [null], allowSlime: false,
+            maxCount: 2, errMode: 'rel', tol: 1e-6,
+            D: 1e6, baseValue: 1, allowClamp20: false, copyN: 10,
+          });
+          const best = sols.slice().sort((a, b) => a.relErr - b.relErr || a.onlyFactorCount - b.onlyFactorCount)[0];
+          const ok = best && best.relErr <= 1e-6 && best.onlyFactorCount === 2;
+          if (ok) {
+            const fs = best.factors.filter(f => f.kind === 'O')
+              .map(f => factorValueStr(f.value) + (f.exp > 1 ? '^' + f.exp : '')).join(' × ');
+            log(`  ✓ 顶解 ${fs} = ${fmt(best.product, 8)}, relErr=${(best.relErr * 100).toFixed(6)}%, 因子数=${best.onlyFactorCount}`);
+            passN++;
+          } else {
+            log(`  ✗ 失败：${best ? 'relErr=' + best.relErr : '无解'}`);
+          }
+        }
+
+        head('(T12) v0.6 复制次数均为正则数（仅含 2/3/5，如 ×51 不合理）');
+        {
+          totalN++;
+          // 宽容搜索：target=0.01, copyN=60, maxCount=3, tol=0.5（收集大量解）
+          const sols = solveAlphaWithCopy({
+            target: 0.01, staffCandidates: [null], allowSlime: false,
+            maxCount: 3, errMode: 'rel', tol: 0.5,
+            D: 1e6, baseValue: 1, allowClamp20: false, copyN: 60,
+          });
+          let bad = false;
+          for (const s of sols) {
+            for (const f of s.factors) {
+              if (f.kind === 'O' && f.exp && !isRegularNumber(f.exp)) { bad = true; }
+            }
+          }
+          log(`  共 ${sols.length} 个解，全部复制次数均为正则数 = ${!bad}`);
+          if (!bad) passN++;
+        }
+
+        head('最终通过率');
+        const rate = passN / Math.max(1, totalN);
+        log(`  通过 ${passN} / ${totalN}  (${(rate * 100).toFixed(0)}%)`);
+        log(rate >= 0.9 ? '✓ 自检通过（≥90%）。v0.6 算法行为符合：v1=7.92、每步钳制≤20、法杖两档、粘液弹、20占maxCount+计入因子数、复制因子(isRegularNumber/饱和剪枝/指数显示)。'
+          : '⚠ 部分用例失败，请检查参数或联系作者。');
+
+        out.textContent = buf;
+      }
+
+      $('#runSelfTest').addEventListener('click', runSelfTests);
+
+      // 下载链接：仅远程（http/https / GitHub Pages）显示；本地 file:// 双击打开即已是离线版，无需显示
+      var dl = $('#dl-offline-link');
+      if (dl && location.protocol === 'file:') { dl.style.display = 'none'; }
+
+    })();
+
+    (function () {
+      'use strict';
+
+      const $ = sel => document.querySelector(sel);
+      const $$ = sel => Array.from(document.querySelectorAll(sel));
+
+      function showPage(which) {
+        const t = which === 'tentacle';
+        $('#page-tentacle').classList.toggle('active', t);
+        $('#page-blackflash').classList.toggle('active', !t);
+        $('#deco-tentacle').classList.toggle('active', t);
+        $('#deco-blackflash').classList.toggle('active', !t);
+        $('#tabTentacle').classList.toggle('active', t);
+        $('#tabBlackflash').classList.toggle('active', !t);
+      }
+      $('#tabTentacle').addEventListener('click', () => showPage('tentacle'));
+      $('#tabBlackflash').addEventListener('click', () => showPage('blackflash'));
+
+      const BF_SPEED = [
+        { name: '沉重一击', val: 0.3, icon: 'factor_heavy_0.3.png' },
+        { name: '逐渐加速', val: 0.32, icon: 'factor_grad_accel_0.32.png', grad: true },
+        { name: '易爆', val: 0.75, icon: 'factor_explode_0.75.png' },
+        { name: '加速', val: 2.5, icon: 'factor_accel_2.5.png' },
+        { name: '轻盈一击', val: 7.5, icon: 'factor_lightshot_7.5.png' },
+      ];
+      const BF_TIME = [
+        { name: '蓝表', delta: 75, icon: 'mod_blue_table.png', label: '+75f' },
+        { name: '无害化', delta: 280, icon: 'mod_harmless.png', label: '+280f' },
+        { name: '红表', delta: -42, icon: 'mod_red_table.png', label: '−42f' },
+      ];
+      const BF_N = BF_SPEED.length + BF_TIME.length;
+      const BF_CARRIERS = {
+        bh: { key: 'bh', name: '黑洞', v0: 2 / 3, xi: -0.2, baseT: 120, tvar: 7, vmax: 1000 / 60, icon: 'mod_blackhole.png' },
+        lt: { key: 'lt', name: '闪电弹', v0: 90, xi: 0.55, baseT: 1, tvar: 0, vmax: 1024, icon: 'mod_bolt.png' },
+      };
+      const BF_COPY_KS = [2, 3, 4, 6, 8, 10];
+      const BF_PLAN_CAP = 1500000;
+      const BF_NODE_CAP = 60000000;
+      const BF_TIME_LIMIT_MS = 45000;
+      const BF_RESULT_CAP = 50000;
+      const BF_SCAN_CAP = 50000;
+
+      function bfIconUrl(name) {
+        if (!name) return '';
+        const D = window.ICON_DATA || {};
+        return D[name] || ('images/icons/final/' + name);
+      }
+
+      function bfClampStep(x, f) {
+        let v = x * f;
+        if (v < 0) v = 0;
+        if (v > 20) v = 20;
+        return v;
+      }
+
+      function bfAlphaChain(start, staffVal, slime, cnt) {
+        let x = start;
+        if (staffVal !== 1) x = bfClampStep(x, staffVal);
+        if (slime) x = bfClampStep(x, 1.1);
+        for (let i = 0; i < BF_SPEED.length; i++) {
+          const c = cnt[i];
+          for (let r = 0; r < c; r++) x = bfClampStep(x, BF_SPEED[i].val);
+        }
+        return x;
+      }
+
+      function bfDist(car, v0eff, nGrad, T) {
+        if (T <= 0) return 0;
+        const q0 = 1 - car.xi / 60;
+        const v1 = Math.min(v0eff * q0, car.vmax);
+        if (T === 1) return v1;
+        const q = 1 - (car.xi - 3 * nGrad) / 60;
+        if (q === 1) return v1 * T;
+        if (q < 1) return v1 + v1 * q * (1 - Math.pow(q, T - 1)) / (1 - q);
+        if (v1 >= car.vmax) return v1 + (T - 1) * car.vmax;
+        const A = Math.ceil(Math.log(car.vmax / v1) / Math.log(q));
+        if (A <= 1) return v1 + (T - 1) * car.vmax;
+        if (T >= A + 1) return v1 + v1 * q * (1 - Math.pow(q, A - 1)) / (1 - q) + (T - A) * car.vmax;
+        return v1 + v1 * q * (1 - Math.pow(q, T - 1)) / (1 - q);
+      }
+
+      function bfDistLoop(car, v0eff, nGrad, T) {
+        if (T <= 0) return 0;
+        const q0 = 1 - car.xi / 60;
+        let v = Math.min(v0eff * q0, car.vmax);
+        let d = 0;
+        let xi = car.xi;
+        for (let t = 1; t <= T; t++) {
+          d += v;
+          if (t === 1) xi -= 3 * nGrad;
+          v = Math.min(v * (1 - xi / 60), car.vmax);
+        }
+        return d;
+      }
+
+      function bfEnumPlans(car, cfg) {
+        const plans = [];
+        let aborted = false;
+        let nodes = 0;
+        const t0 = Date.now();
+
+        function finish(cnt, nArr, copyKArr) {
+          const harm = BF_SPEED.length + 1;
+          const T = car.baseT + 75 * cnt[5] + (car.key === 'lt' ? 281 : 280) * cnt[harm] - 42 * cnt[7];
+          if (T < 1) return;
+          const alpha = bfAlphaChain(cfg.start, cfg.staffVal, cfg.slime, cnt);
+          const v0eff = car.v0 * alpha;
+          const nGrad = cnt[1];
+          const d = bfDist(car, v0eff, nGrad, T);
+          let corr = 0;
+          if (nArr) {
+            for (let i = 0; i < BF_N; i++) corr += nArr[i] + (copyKArr[i] ? 1 : 0);
+          } else {
+            for (let i = 0; i < BF_N; i++) corr += cnt[i];
+          }
+          const p = { cnt: cnt.slice(), T, v0eff, d, corr };
+          if (car.tvar > 0) {
+            p.dLo = bfDist(car, v0eff, nGrad, T - car.tvar);
+            p.dHi = bfDist(car, v0eff, nGrad, T + car.tvar);
+          } else {
+            p.dLo = d; p.dHi = d;
+          }
+          if (nArr) { p.nArr = nArr.slice(); p.copyK = copyKArr.slice(); }
+          plans.push(p);
+          if (plans.length >= BF_PLAN_CAP) aborted = true;
+        }
+
+        function tick() {
+          nodes++;
+          if (nodes > BF_NODE_CAP) { aborted = true; return; }
+          if ((nodes & 4095) === 0 && Date.now() - t0 > BF_TIME_LIMIT_MS) aborted = true;
+        }
+
+        if (!cfg.enableCopy) {
+          const cnt = new Array(BF_N).fill(0);
+          (function dfs(i, rem) {
+            if (aborted) return;
+            tick();
+            if (i === BF_N) { finish(cnt, null, null); return; }
+            for (let c = 0; c <= rem; c++) {
+              cnt[i] = c;
+              dfs(i + 1, rem - c);
+              if (aborted) return;
+            }
+            cnt[i] = 0;
+          })(0, cfg.budget);
+        } else {
+          const kSets = [[]];
+          for (const k of BF_COPY_KS) kSets.push([k]);
+          for (let i = 0; i < BF_COPY_KS.length; i++)
+            for (let j = i + 1; j < BF_COPY_KS.length; j++)
+              kSets.push([BF_COPY_KS[i], BF_COPY_KS[j]]);
+          const cnt = new Array(BF_N).fill(0);
+          const nArr = new Array(BF_N).fill(0);
+          const copyK = new Array(BF_N).fill(0);
+          for (const ks of kSets) {
+            if (aborted) break;
+            const full = (1 << ks.length) - 1;
+            (function dfs(i, rem, usedMask) {
+              if (aborted) return;
+              tick();
+              if (i === BF_N) {
+                if (usedMask !== full) return;
+                finish(cnt, nArr, copyK);
+                return;
+              }
+              for (let n = 0; n <= rem; n++) {
+                nArr[i] = n; cnt[i] = n;
+                dfs(i + 1, rem - n, usedMask);
+                if (aborted) return;
+              }
+              for (let m = 0; m < ks.length; m++) {
+                for (let n = 0; n <= rem - 1; n++) {
+                  nArr[i] = n; copyK[i] = ks[m]; cnt[i] = n + ks[m];
+                  dfs(i + 1, rem - n - 1, usedMask | (1 << m));
+                  if (aborted) return;
+                  copyK[i] = 0;
+                }
+              }
+              nArr[i] = 0; cnt[i] = 0;
+            })(0, cfg.budget, 0);
+          }
+        }
+        return { plans, aborted };
+      }
+
+      function bfLowerBound(arr, x) {
+        let l = 0, r = arr.length;
+        while (l < r) { const m = (l + r) >> 1; if (arr[m] < x) l = m + 1; else r = m; }
+        return l;
+      }
+
+      function bfIsSubset(a, b) {
+        for (let i = 0; i < BF_N; i++) if (a[i] > b[i]) return false;
+        return true;
+      }
+
+      function bfMatch(bhPlans, ltPlans, D, tolAbs, subset, ctx, sols) {
+        const sorted = bhPlans.slice().sort((p, q) => p.d - q.d);
+        const ds = sorted.map(p => p.d);
+        let localAbort = false;
+        for (const lt of ltPlans) {
+          if (sols.length >= BF_RESULT_CAP) { localAbort = true; break; }
+          const need = D - lt.d;
+          const iLo = bfLowerBound(ds, need - tolAbs);
+          const iHi = bfLowerBound(ds, need + tolAbs + 1e-9);
+          let scanned = 0;
+          for (let i = iLo; i < iHi; i++) {
+            if (++scanned > BF_SCAN_CAP) { localAbort = true; break; }
+            if (sols.length >= BF_RESULT_CAP) { localAbort = true; break; }
+            const bh = sorted[i];
+            if (subset && !bfIsSubset(bh.cnt, lt.cnt) && !bfIsSubset(lt.cnt, bh.cnt)) continue;
+            const mid = bh.d + lt.d;
+            sols.push({
+              bh, lt, ctx, mid,
+              absErr: Math.abs(mid - D),
+              relErr: Math.abs(mid - D) / D,
+            });
+          }
+        }
+        return localAbort;
+      }
+
+      function bfSolveSync(opts) {
+        const mcBh = opts.enableCopy ? Math.min(5, opts.mcBh) : opts.mcBh;
+        const mcLt = opts.enableCopy ? Math.min(5, opts.mcLt) : opts.mcLt;
+        const sols = [];
+        let aborted = false;
+        const starts = opts.allowStart20 ? [1, 20] : [1];
+        const slimes = opts.withSlime ? [false, true] : [false];
+        for (const start of starts) {
+          for (const slime of slimes) {
+            const costStart = start === 20 ? 1 : 0;
+            const bhBudget = mcBh - costStart;
+            const ltBudget = mcLt - costStart;
+            if (bhBudget < 0 || ltBudget < 0) continue;
+            const ltEnum = bfEnumPlans(BF_CARRIERS.lt, { staffVal: 1, slime, start, budget: ltBudget, enableCopy: opts.enableCopy });
+            if (ltEnum.aborted) aborted = true;
+            for (const staffVal of opts.staffVals) {
+              const bhEnum = bfEnumPlans(BF_CARRIERS.bh, { staffVal, slime, start, budget: bhBudget, enableCopy: opts.enableCopy });
+              if (bhEnum.aborted) aborted = true;
+              if (bfMatch(bhEnum.plans, ltEnum.plans, opts.D, opts.tolAbs, opts.subset, { start, slime, staffVal }, sols)) aborted = true;
+              if (sols.length >= BF_RESULT_CAP) { aborted = true; break; }
+            }
+            if (sols.length >= BF_RESULT_CAP) break;
+          }
+          if (sols.length >= BF_RESULT_CAP) break;
+        }
+        return { sols, aborted };
+      }
+
+      let bfLast = null;
+      const bfState = { page: 0 };
+
+      function bfFmt(x, digits = 4) {
+        if (!isFinite(x)) return '—';
+        if (Math.abs(x) >= 100000) return x.toExponential(3);
+        if (x !== 0 && Number(x.toFixed(digits)) === 0) return x.toExponential(2);
+        return Number(x.toFixed(digits)).toString();
+      }
+      function bfFmtInt(x) { return Math.round(x).toLocaleString('zh-CN'); }
+
+      function bfSorted() {
+        if (!bfLast) return [];
+        const arr = bfLast.sols.slice();
+        const mode = $('input[name="bfSortMode"]:checked').value;
+        if (mode === 'err') {
+          arr.sort((a, b) => a.relErr - b.relErr
+            || (a.bh.corr + a.lt.corr) - (b.bh.corr + b.lt.corr));
+        } else {
+          arr.sort((a, b) => (a.bh.corr + a.lt.corr) - (b.bh.corr + b.lt.corr)
+            || a.relErr - b.relErr);
+        }
+        return arr;
+      }
+
+      function bfRenderSummary() {
+        if (!bfLast) return;
+        $('#bfSDist').textContent = bfFmtInt(bfLast.D) + ' 像素';
+        const sorted = bfSorted();
+        const e = $('#bfSErr');
+        if (!sorted.length) {
+          $('#bfSRange').textContent = '—';
+          $('#bfSMid').textContent = '—';
+          e.className = 'val err';
+          e.textContent = '未找到方案';
+          return;
+        }
+        const best = sorted[0];
+        const rLo = (best.bh.dLo + best.lt.d) - best.mid;
+        const rHi = (best.bh.dHi + best.lt.d) - best.mid;
+        $('#bfSRange').textContent = `[${bfFmt(rLo, 1)} ~ +${bfFmt(rHi, 1)}]`;
+        $('#bfSMid').textContent = bfFmt(best.mid, 3) + ' 像素';
+        const delta = best.mid - bfLast.D;
+        const clr = Math.abs(delta) <= 5 ? 'ok' : (Math.abs(delta) <= 100 ? 'warn' : 'err');
+        e.className = 'val ' + clr;
+        const sign = delta >= 0 ? '+' : '−';
+        e.innerHTML = sign + bfFmt(Math.abs(delta), 2) + ' px <span class="small">(rel ' + (best.relErr * 100).toFixed(4) + '%)</span>';
+      }
+
+      function bfRenderPager() {
+        const sols = bfSorted();
+        const total = sols.length;
+        const pagerT = $('#bfPagerTop');
+        const pagerB = $('#bfPagerBottom');
+        if (!total) {
+          pagerT.style.display = 'none'; pagerB.style.display = 'none';
+          return;
+        }
+        const pageSize = parseInt($('input[name="bfPageSize"]:checked').value, 10);
+        const pages = Math.max(1, Math.ceil(total / pageSize));
+        if (bfState.page >= pages) bfState.page = pages - 1;
+        if (bfState.page < 0) bfState.page = 0;
+
+        function buildPager(which) {
+          which.style.display = 'flex';
+          which.innerHTML = '';
+          const left = document.createElement('div'); left.className = 'row';
+          const right = document.createElement('div'); right.className = 'row';
+          if (which === pagerT) {
+            const tag = document.createElement('div');
+            tag.style.cssText = 'font-size:12px;color:var(--text-dim);';
+            tag.innerHTML = `排序：<b style="color:var(--accent)">${$('input[name="bfSortMode"]:checked').value === 'err' ? '误差优先' : '修正最少优先'
+              }</b> &nbsp;·&nbsp; 总方案 <b style="color:#fff">${total}</b> 个`;
+            left.appendChild(tag);
+          } else {
+            const tag = document.createElement('div');
+            tag.style.cssText = 'font-size:12px;color:var(--text-dim);';
+            tag.textContent = `第 ${bfState.page + 1} / ${pages} 页`;
+            left.appendChild(tag);
+          }
+          const pg = document.createElement('div'); pg.className = 'pager';
+          const prev = document.createElement('button');
+          prev.textContent = '‹ 上一页';
+          prev.disabled = bfState.page === 0;
+          prev.addEventListener('click', () => { bfState.page--; bfRenderAll(); });
+          pg.appendChild(prev);
+          const btns = [];
+          const p = bfState.page;
+          const add = (x) => btns.push(x);
+          const ell = () => { const s = document.createElement('span'); s.className = 'info'; s.textContent = '…'; pg.appendChild(s); };
+          add(0);
+          const lo = Math.max(1, p - 2), hi = Math.min(pages - 2, p + 2);
+          if (lo > 1) ell();
+          for (let i = lo; i <= hi; i++) add(i);
+          if (hi < pages - 2) ell();
+          if (pages > 1) add(pages - 1);
+          for (const n of btns) {
+            const b = document.createElement('button');
+            b.textContent = String(n + 1);
+            if (n === p) b.className = 'active';
+            b.addEventListener('click', () => { bfState.page = n; bfRenderAll(); });
+            pg.appendChild(b);
+          }
+          const next = document.createElement('button');
+          next.textContent = '下一页 ›';
+          next.disabled = bfState.page >= pages - 1;
+          next.addEventListener('click', () => { bfState.page++; bfRenderAll(); });
+          pg.appendChild(next);
+          right.appendChild(pg);
+          which.appendChild(left); which.appendChild(right);
+        }
+        buildPager(pagerT);
+        buildPager(pagerB);
+      }
+
+      function bfRenderAll() {
+        bfRenderPager();
+        const sols = bfSorted();
+        const pageSize = parseInt($('input[name="bfPageSize"]:checked').value, 10);
+        const start = bfState.page * pageSize;
+        bfRenderSolutions(sols.slice(start, start + pageSize), start);
+        bfRenderSummary();
+      }
+
+      function bfChip(o) {
+        const chip = document.createElement('div');
+        chip.className = 'factor-chip';
+        const dot = o.dot ? `<span class="dot ${o.dot}"></span>` : '';
+        const src = o.icon ? bfIconUrl(o.icon) : '';
+        const img = src
+          ? `<img alt="" src="${src}" onerror="this.style.visibility='hidden'">`
+          : `<span style="width:22px;height:22px;display:inline-block;background:#1c1438;border:1px solid #3a2c6a;border-radius:5px"></span>`;
+        const badge = o.badge ? `<span class="exp-badge">${o.badge}</span>` : '';
+        chip.title = o.title || '';
+        chip.innerHTML = `${dot}${img}<span class="num">${o.num}</span>${badge}`;
+        return chip;
+      }
+
+      function bfBuildChips(row, plan, ctx, carKey) {
+        if (ctx.start === 20) {
+          row.appendChild(bfChip({ dot: 'c', icon: '', num: '×20', title: '起始 20 倍（占 1 个修正名额）' }));
+        }
+        if (carKey === 'bh' && ctx.staffVal !== 1) {
+          row.appendChild(bfChip({
+            dot: 'a',
+            icon: ctx.staffVal === 1.25 ? 'factor_staff_1.25.png' : 'factor_staff_1.5.png',
+            num: '×' + ctx.staffVal,
+            title: '法杖倍率 ' + ctx.staffVal + '（只作用于黑洞）',
+          }));
+        }
+        if (ctx.slime) {
+          row.appendChild(bfChip({ dot: 'b', icon: 'factor_slime_1.1.png', num: '×1.1', title: '粘液弹 1.1（不计修正数）' }));
+        }
+        for (let i = 0; i < BF_SPEED.length; i++) {
+          const c = plan.cnt[i];
+          if (!c) continue;
+          const f = BF_SPEED[i];
+          const copied = plan.copyK ? plan.copyK[i] : 0;
+          row.appendChild(bfChip({
+            dot: 'd', icon: f.icon, num: '×' + f.val,
+            badge: c > 1 ? '×' + c : '',
+            title: `${f.name} ×${f.val}` + (c > 1 ? `（共 ${c} 次${copied ? '，含复制 ×' + copied : ''}）` : ''),
+          }));
+        }
+        const off = BF_SPEED.length;
+        for (let j = 0; j < BF_TIME.length; j++) {
+          const c = plan.cnt[off + j];
+          if (!c) continue;
+          const f = BF_TIME[j];
+          const label = (j === 1 && carKey === 'lt') ? '+281f' : f.label;
+          const copied = plan.copyK ? plan.copyK[off + j] : 0;
+          row.appendChild(bfChip({
+            dot: 't', icon: f.icon, num: label,
+            badge: c > 1 ? '×' + c : '',
+            title: `${f.name} ${label}` + (c > 1 ? `（共 ${c} 次${copied ? '，含复制 ×' + copied : ''}）` : ''),
+          }));
+        }
+      }
+
+      function bfCarrierRow(carKey, sol) {
+        const car = BF_CARRIERS[carKey];
+        const plan = carKey === 'bh' ? sol.bh : sol.lt;
+        const row = document.createElement('div');
+        row.className = 'carrier-row';
+        const head = document.createElement('div');
+        head.className = 'carrier-head';
+        const name = document.createElement('span');
+        name.className = 'cname';
+        name.innerHTML = `<img alt="" src="${bfIconUrl(car.icon)}" onerror="this.style.display='none'"> ${car.name}`;
+        const meta = document.createElement('span');
+        meta.className = 'cmeta';
+        meta.innerHTML = `距离 <b>${bfFmt(plan.d, 2)}</b> px · 存在 <b>${plan.T}</b>f · v₀′ = <b>${bfFmt(plan.v0eff, 4)}</b>` + (carKey === 'bh' ? ` · 修正数 <b>${plan.corr}</b>` : ` · 修正数 <b>${plan.corr}</b>`);
+        head.appendChild(name); head.appendChild(meta);
+        row.appendChild(head);
+        if (bfLast && bfLast.showIcons) {
+          const fr = document.createElement('div');
+          fr.className = 'factors-row';
+          bfBuildChips(fr, plan, sol.ctx, carKey);
+          row.appendChild(fr);
+        }
+        return row;
+      }
+
+      function bfRenderSolutions(sols, offsetIdx) {
+        const wrap = $('#bfSolutionsWrap');
+        if (!bfLast) return;
+        if (!sols.length) {
+          wrap.innerHTML = `<div class="empty">
+        未在当前设置下找到黑洞 + 闪电弹方案。<br>
+        建议：<b>1.</b> 把「允许误差」调大一点 &nbsp; <b>2.</b> 把修正上限往上调 &nbsp; <b>3.</b> 开启复制修正 &nbsp; <b>4.</b> 关闭子集搜索。
+      </div>`;
+          return;
+        }
+        const list = document.createElement('div');
+        list.className = 'solutions-list';
+        const D = bfLast.D;
+
+        if (bfLast.aborted) {
+          const warn = document.createElement('div');
+          warn.className = 'decompose';
+          warn.style.cssText = 'border-color:rgba(251,191,36,0.6);background:rgba(251,191,36,0.08)';
+          warn.innerHTML = '<div class="hint warn" style="margin:0">⚠ 搜索已达方案/节点/时间上限，以下为已找到的部分方案。建议减小修正上限或收紧误差以获取完整结果。</div>';
+          list.appendChild(warn);
+        }
+
+        sols.forEach((s, k) => {
+          const idx = offsetIdx + k + 1;
+          const delta = s.mid - D;
+          const card = document.createElement('div');
+          card.className = 'decompose';
+          const head = document.createElement('div');
+          head.className = 'decompose-head';
+          const rank = document.createElement('div');
+          rank.className = 'title';
+          rank.textContent = `方案 #${idx}`;
+          const meta = document.createElement('div');
+          meta.className = 'meta';
+          const sign = delta >= 0 ? '+' : '−';
+          meta.innerHTML = `中间值总距离 = <b>${bfFmt(s.mid, 3)}</b> px &nbsp;·&nbsp;
+        误差距离范围 = <b>[${bfFmt((s.bh.dLo + s.lt.d) - s.mid, 1)} ~ +${bfFmt((s.bh.dHi + s.lt.d) - s.mid, 1)}]</b> &nbsp;·&nbsp;
+        误差 = <b>${sign}${bfFmt(Math.abs(delta), 2)} px (${(s.relErr * 100).toFixed(4)}%)</b> &nbsp;·&nbsp;
+        修正数 = <b>${s.bh.corr + s.lt.corr}</b>（黑洞 ${s.bh.corr} + 闪电弹 ${s.lt.corr}）`;
+          head.appendChild(rank); head.appendChild(meta);
+          card.appendChild(head);
+          card.appendChild(bfCarrierRow('bh', s));
+          card.appendChild(bfCarrierRow('lt', s));
+          list.appendChild(card);
+        });
+
+        wrap.innerHTML = ''; wrap.appendChild(list);
+      }
+
+      $$('input[name="bfDistPreset"]').forEach(r => {
+        r.addEventListener('change', () => {
+          const v = $('input[name="bfDistPreset"]:checked').value;
+          const el = $('#bfDistCustom');
+          if (v === 'ng0') { el.value = 35840; el.disabled = true; }
+          else if (v === 'ng1') { el.value = 32768; el.disabled = true; }
+          else { el.disabled = false; el.focus(); }
+        });
+      });
+
+      $$('input[name="bfErrMode"]').forEach(r => {
+        r.addEventListener('change', () => {
+          const m = $('input[name="bfErrMode"]:checked').value;
+          const lbl = $('#bfTolLbl');
+          const inp = $('#bfTolerance');
+          if (m === 'rel') {
+            lbl.textContent = '允许相对误差 %（0 ~ 50）';
+            inp.value = 1; inp.min = 0; inp.max = 50; inp.step = 0.1;
+          } else {
+            lbl.textContent = '允许绝对像素数偏差（例如 500）';
+            inp.value = 500; inp.min = 0; inp.max = 200000; inp.step = 1;
+          }
+        });
+      });
+
+      $$('input[name="bfStaff"]').forEach(r => {
+        r.addEventListener('change', () => {
+          if (bfLast) $('#bfCalcBtn').click();
+        });
+      });
+      $('#bfWithSlime').addEventListener('change', () => {
+        if (bfLast) $('#bfCalcBtn').click();
+      });
+      $$('input[name="bfSortMode"]').forEach(r => {
+        r.addEventListener('change', () => {
+          if (bfLast) bfRenderAll();
+        });
+      });
+      $$('input[name="bfPageSize"]').forEach(r => {
+        r.addEventListener('change', () => {
+          if (bfLast) { bfState.page = 0; bfRenderAll(); }
+        });
+      });
+      $('#bfShowIcons').addEventListener('change', () => {
+        if (bfLast) { bfLast.showIcons = $('#bfShowIcons').checked; bfRenderAll(); }
+      });
+      $('#bfEnableCopy').addEventListener('change', () => {
+        const on = $('#bfEnableCopy').checked;
+        $('#bfCopyWarnBadge').style.display = on ? 'inline-block' : 'none';
+      });
+
+      $('#bfCalcBtn').addEventListener('click', () => {
+        const btn = $('#bfCalcBtn'); btn.disabled = true;
+        const prog = $('#bfProgBar'); prog.classList.add('active');
+        const progBar = prog.firstElementChild;
+        progBar.style.width = '10%';
+
+        const D = Math.max(1, parseInt($('#bfDistCustom').value, 10) || 0);
+        const mcBh = Math.max(0, Math.min(8, parseInt($('#bfMaxBh').value, 10) || 0));
+        const mcLt = Math.max(0, Math.min(8, parseInt($('#bfMaxLt').value, 10) || 0));
+        const errMode = $('input[name="bfErrMode"]:checked').value;
+        const tolRaw = parseFloat($('#bfTolerance').value) || 0;
+        const staffMode = $('input[name="bfStaff"]:checked').value;
+        const staffVals = staffMode === 'unlimit' ? [1, 1.25, 1.5] : [1.25, 1.5];
+        const tolAbs = errMode === 'rel'
+          ? Math.max(0, Math.min(0.5, tolRaw / 100)) * D
+          : Math.max(0, tolRaw);
+
+        progBar.style.width = '30%';
+        setTimeout(() => {
+          const res = bfSolveSync({
+            D, tolAbs, staffVals,
+            withSlime: $('#bfWithSlime').checked,
+            allowStart20: $('#bfAllowClamp20').checked,
+            subset: $('#bfSubset').checked,
+            enableCopy: $('#bfEnableCopy').checked,
+            mcBh, mcLt,
+          });
+          progBar.style.width = '90%';
+          bfLast = {
+            D, tolAbs, errMode, tolRaw,
+            sols: res.sols, aborted: res.aborted,
+            showIcons: $('#bfShowIcons').checked,
+          };
+          bfState.page = 0;
+          bfRenderSummary();
+          bfRenderAll();
+          progBar.style.width = '100%';
+          setTimeout(() => { prog.classList.remove('active'); progBar.style.width = '0'; btn.disabled = false; }, 300);
+        }, 30);
+      });
+
+      function bfRunSelfTests() {
+        const out = $('#bfSelfTestOut');
+        let buf = '';
+        let passN = 0, totalN = 0;
+        const log = s => { buf += s + '\n'; };
+        const head = s => { log('\n=== ' + s + ' ==='); };
+        const relNear = (a, b, tol) => Math.abs(a - b) <= tol * Math.max(1e-12, Math.abs(b));
+
+        log('黑闪算法自检开始…');
+
+        head('(T1) xls 社区方案回归（黑洞：法杖1.5+加速×2+蓝表×4；闪电弹：加速×2+蓝表×1）');
+        totalN++;
+        {
+          const bh = BF_CARRIERS.bh, lt = BF_CARRIERS.lt;
+          const cntBh = [0, 0, 0, 2, 0, 4, 0, 0];
+          const aBh = bfAlphaChain(1, 1.5, false, cntBh);
+          const v0Bh = bh.v0 * aBh;
+          const dBh = bfDist(bh, v0Bh, 0, 420);
+          const cntLt = [0, 0, 0, 2, 0, 1, 0, 0];
+          const aLt = bfAlphaChain(1, 1, false, cntLt);
+          const v0Lt = lt.v0 * aLt;
+          const dLt = bfDist(lt, v0Lt, 0, 76);
+          const checks = [
+            ['α(黑洞)=9.375', aBh, 9.375],
+            ['v0eff(黑洞)=6.25', v0Bh, 6.25],
+            ['d(黑洞,T=420)', dBh, 5223.09600932249],
+            ['v0eff(闪电弹)=562.5', v0Lt, 562.5],
+            ['d(闪电弹,T=76)', dLt, 30604.5432109003],
+            ['两载体总和', dBh + dLt, 35827.6392202228],
+          ];
+          let all = true;
+          for (const [name, got, exp] of checks) {
+            const ok = relNear(got, exp, 1e-4);
+            if (!ok) all = false;
+            log(`  ${ok ? '✓' : '✗'} ${name}：计算 ${got} / xls ${exp}` + (ok ? '' : `  相对误差 ${Math.abs((got - exp) / exp)}`));
+          }
+          if (all) passN++;
+        }
+
+        head('(T2) 闭式距离 vs 逐帧循环（含 q>1 满速分段）');
+        totalN++;
+        {
+          let maxRel = 0, n = 0, bad = 0;
+          const v0s = [0.5, 2, 6.25, 90, 562.5, 1200];
+          const grads = [0, 1, 2, 3];
+          const Ts = [1, 2, 5, 10, 76, 120, 200, 294, 420, 600];
+          for (const car of [BF_CARRIERS.bh, BF_CARRIERS.lt]) {
+            for (const v0 of v0s) for (const g of grads) for (const T of Ts) {
+              const a = bfDist(car, v0, g, T);
+              const b = bfDistLoop(car, v0, g, T);
+              const rel = Math.abs(a - b) / Math.max(1e-9, Math.abs(b));
+              if (rel > maxRel) maxRel = rel;
+              if (rel > 1e-9) bad++;
+              n++;
+            }
+          }
+          log(`  用例 ${n} 个，最大相对误差 ${maxRel.toExponential(2)}` + (bad ? `，超限 ${bad} 个` : '，全部 < 1e-9'));
+          if (!bad) passN++;
+        }
+
+        head('(T3) 黑洞存在时长 ±7f 距离范围（xls F14/F15）');
+        totalN++;
+        {
+          const bh = BF_CARRIERS.bh;
+          const dHi = bfDist(bh, 6.25, 0, 427);
+          const dLo = bfDist(bh, 6.25, 0, 413);
+          const okHi = relNear(dHi, 5339.76267598916, 1e-4);
+          const okLo = relNear(dLo, 5106.42934265583, 1e-4);
+          log(`  d(T+7)=${dHi}（xls 5339.76267598916）${okHi ? ' ✓' : ' ✗'}`);
+          log(`  d(T−7)=${dLo}（xls 5106.42934265583）${okLo ? ' ✓' : ' ✗'}`);
+          log(`  跨度 = ${dHi - dLo}（xls 233.333333333333）`);
+          if (okHi && okLo) passN++;
+        }
+
+        head('(T4) 存在时长必须为正（允许先加后减，最终为正）');
+        totalN++;
+        {
+          const e = bfEnumPlans(BF_CARRIERS.bh, { staffVal: 1, slime: false, start: 1, budget: 8, enableCopy: false });
+          const noSpd = p => p.cnt[0] === 0 && p.cnt[1] === 0 && p.cnt[2] === 0 && p.cnt[3] === 0 && p.cnt[4] === 0;
+          const bad = e.plans.filter(p => noSpd(p) && p.cnt[5] === 0 && p.cnt[6] === 0 && p.cnt[7] === 3);
+          const good = e.plans.filter(p => noSpd(p) && p.cnt[5] === 1 && p.cnt[6] === 0 && p.cnt[7] === 4);
+          log(`  红表×3（T=120−126=−6）方案数 = ${bad.length}（应为 0，被丢弃）`);
+          log(`  蓝表×1+红表×4（T=120+75−168=27）方案数 = ${good.length}（应为 1，T=${good[0] ? good[0].T : '—'}）`);
+          if (bad.length === 0 && good.length === 1 && good[0].T === 27) passN++;
+        }
+
+        head('(T5) 端到端搜索：D = 35827.6392202228（xls 例子总和）');
+        totalN++;
+        {
+          const res = bfSolveSync({
+            D: 35827.6392202228, tolAbs: 0.001,
+            staffVals: [1, 1.25, 1.5], withSlime: true, allowStart20: false,
+            subset: false, enableCopy: false, mcBh: 6, mcLt: 6,
+          });
+          const near = res.sols.filter(s => s.relErr < 1e-9);
+          const hit = near.find(s => s.ctx.staffVal === 1.5 && !s.ctx.slime && s.ctx.start === 1
+            && s.bh.cnt[3] === 2 && s.bh.cnt[5] === 4
+            && s.lt.cnt[3] === 2 && s.lt.cnt[5] === 1);
+          log(`  方案总数 ${res.sols.length}，误差 < 1e-9 的方案 ${near.length} 个`);
+          log(`  复现 xls 配置（黑洞=法杖1.5+加速×2+蓝表×4，闪电弹=加速×2+蓝表×1）= ${!!hit}`);
+          if (hit) passN++;
+        }
+
+        head('(T6) 复制约束：次数∈{2,3,4,6,8,10}、最多两种次数、上限取 min{5, 用户上限}');
+        totalN++;
+        {
+          const e = bfEnumPlans(BF_CARRIERS.lt, { staffVal: 1, slime: false, start: 1, budget: Math.min(5, 8), enableCopy: true });
+          let badK = false, badBudget = false, nCopy = 0;
+          for (const p of e.plans) {
+            if (p.corr > 5) badBudget = true;
+            const ks = new Set();
+            for (let i = 0; i < BF_N; i++) {
+              const k = p.copyK[i];
+              if (k) { ks.add(k); if (BF_COPY_KS.indexOf(k) < 0) badK = true; }
+            }
+            if (ks.size > 2) badK = true;
+            if (ks.size) nCopy++;
+          }
+          log(`  方案总数 ${e.plans.length}（含复制 ${nCopy}）；非法复制次数 = ${badK}；超修正上限 = ${badBudget}`);
+          const g = bfEnumPlans(BF_CARRIERS.bh, { staffVal: 1, slime: false, start: 1, budget: 5, enableCopy: true });
+          const p4 = g.plans.find(p => p.copyK[1] === 4 && p.cnt[1] === 4 && p.corr === 1);
+          const okGrad = p4 && Math.abs(p4.d - bfDistLoop(BF_CARRIERS.bh, p4.v0eff, 4, p4.T)) < 1e-9 * Math.max(1, p4.d);
+          log(`  {逐渐加速}×4：修正数 = ${p4 ? p4.corr : '—'}（应为 1），ξ 叠加 −12，闭式与逐帧一致 = ${!!okGrad}`);
+          if (!badK && !badBudget && okGrad) passN++;
+        }
+
+        head('(T7) 子集搜索模式：仅保留一方修正为另一方子集的方案');
+        totalN++;
+        {
+          const bh = BF_CARRIERS.bh, lt = BF_CARRIERS.lt;
+          const cntA = [0, 0, 0, 2, 0, 0, 0, 0];
+          const mid0 = bfDist(bh, bh.v0 * bfAlphaChain(1, 1, false, cntA), 0, 120)
+            + bfDist(lt, lt.v0 * bfAlphaChain(1, 1, false, cntA), 0, 1);
+          const res = bfSolveSync({
+            D: mid0, tolAbs: mid0 * 0.01,
+            staffVals: [1], withSlime: false, allowStart20: false,
+            subset: true, enableCopy: false, mcBh: 2, mcLt: 2,
+          });
+          let allOk = res.sols.length > 0;
+          for (const s of res.sols) {
+            if (!bfIsSubset(s.bh.cnt, s.lt.cnt) && !bfIsSubset(s.lt.cnt, s.bh.cnt)) { allOk = false; break; }
+          }
+          const hit = res.sols.some(s => s.bh.cnt[3] === 2 && s.lt.cnt[3] === 2);
+          log(`  方案数 ${res.sols.length}（含目标配置 = ${hit}），全部满足子集关系 = ${allOk}`);
+          if (allOk && hit) passN++;
+        }
+
+        head('(T8) 无害化对闪电弹 +281f、黑洞 +280f；黑闪弃用相位/混沌轨迹因子');
+        totalN++;
+        {
+          const eLt = bfEnumPlans(BF_CARRIERS.lt, { staffVal: 1, slime: false, start: 1, budget: 6, enableCopy: true });
+          const eBh = bfEnumPlans(BF_CARRIERS.bh, { staffVal: 1, slime: false, start: 1, budget: 6, enableCopy: true });
+          const ltH = eLt.plans.find(p => p.cnt[6] > 0 && p.cnt[5] === 0 && p.cnt[7] === 0);
+          const bhH = eBh.plans.find(p => p.cnt[6] > 0 && p.cnt[5] === 0 && p.cnt[7] === 0);
+          const okLt = !!ltH && ltH.T === 1 + 281 * ltH.cnt[6];
+          const okBh = !!bhH && bhH.T === 120 + 280 * bhH.cnt[6];
+          const noPhase = !BF_SPEED.some(f => f.name.includes('相位'));
+          const noChaos = !BF_SPEED.some(f => f.name.includes('混沌') || f.name.includes('蛇形'));
+          log(`  闪电弹仅无害化：T = ${ltH ? ltH.T : '—'}（应为 ${1 + 281 * (ltH ? ltH.cnt[6] : 0)}）${okLt ? ' ✓' : ' ✗'}`);
+          log(`  黑洞仅无害化：T = ${bhH ? bhH.T : '—'}（应为 ${120 + 280 * (bhH ? bhH.cnt[6] : 0)}）${okBh ? ' ✓' : ' ✗'}`);
+          log(`  待选因子剔除相位/混沌轨迹 = ${noPhase && noChaos ? '是 ✓' : '否 ✗'}（现 ${BF_SPEED.length} 种）`);
+          if (okLt && okBh && noPhase && noChaos) passN++;
+        }
+
+        head('最终通过率');
+        const rate = passN / Math.max(1, totalN);
+        log(`  通过 ${passN} / ${totalN}  (${(rate * 100).toFixed(0)}%)`);
+        log(rate >= 0.9
+          ? '✓ 自检通过（≥90%）。v0.7 黑闪算法行为符合：xls 社区方案、闭式=逐帧、±7f 范围、时长为正、端到端复现、复制约束、子集搜索、无害化(闪电弹+281f)、因子剔除。'
+          : '⚠ 部分用例失败，请检查参数或联系作者。');
+
+        out.textContent = buf;
+      }
+
+      $('#bfRunSelfTest').addEventListener('click', bfRunSelfTests);
+
+      var bfdl = $('#bf-dl-offline-link');
+      if (bfdl && location.protocol === 'file:') { bfdl.style.display = 'none'; }
+
+    })();
+  </script>
+</body>
+
+</html>
