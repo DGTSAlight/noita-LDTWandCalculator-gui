@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>跃迁法术收集计算器 v0.1.0 · Noita</title>
+<title>跃迁法术收集计算器 v0.1.1 · Noita</title>
 <style>
 /* 跃迁法术收集计算器 —— 样式（黑底 + 荧光紫/绿点缀，贴近 Noita 观感） */
 /* 与旧版跃迁计算器（v0.7）保持一致的主题变量 */
@@ -64,8 +64,8 @@ body {
   50% { transform: translateY(-8px); }
 }
 
-/* 内容压在装饰层之上 */
-.topbar, .layout, .foot { position: relative; z-index: 1; }
+/* 内容压在装饰层之上（layout 不设 z-index，避免困住移动端抽屉） */
+.topbar, .layout, .foot { position: relative; }
 
 /* ---------- 顶栏 ---------- */
 .topbar {
@@ -76,6 +76,13 @@ body {
   backdrop-filter: blur(6px);
   position: sticky; top: 0; z-index: 20;
 }
+.panel-toggle {
+  display: grid; place-items: center;
+  width: 34px; height: 34px; border-radius: 9px; cursor: pointer;
+  background: var(--card); border: 1px solid var(--line); color: var(--txt);
+  font-size: 15px; line-height: 1;
+}
+.panel-toggle:hover { border-color: var(--accent); color: var(--accent); }
 .brand { display: flex; align-items: center; gap: 12px; }
 .logo {
   font-size: 26px; color: var(--accent);
@@ -84,7 +91,7 @@ body {
 .topbar h1 { margin: 0; font-size: 17px; letter-spacing: .04em; font-weight: 600; }
 .sub { margin: 0; color: var(--dim); font-size: 12px; }
 
-.tabs { display: flex; gap: 6px; margin-left: auto; }
+.tabs { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
 .tab {
   padding: 8px 16px; border-radius: 999px; cursor: pointer;
   border: 1px solid var(--line); background: var(--card);
@@ -103,7 +110,15 @@ body {
   display: grid; grid-template-columns: 300px minmax(0, 1fr);
   gap: 18px; padding: 18px 22px 40px; max-width: 1240px; margin: 0 auto;
 }
-@media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+body.panel-collapsed .layout { grid-template-columns: minmax(0, 1fr); }
+body.panel-collapsed .panel { display: none; }
+
+/* 移动端遮罩（面板展开时出现） */
+.scrim {
+  position: fixed; inset: 0; z-index: 55;
+  background: rgba(4, 3, 12, .62); backdrop-filter: blur(2px);
+}
+.panel-close { display: none; }
 
 /* ---------- 法术面板 ---------- */
 .panel {
@@ -143,6 +158,10 @@ body {
 .sitem img { width: 24px; height: 24px; image-rendering: pixelated; flex: 0 0 24px; }
 .sitem .nm { flex: 1; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sitem .tag { font-size: 10px; color: var(--accent2); border: 1px solid #2f5b46; border-radius: 4px; padding: 0 4px; }
+.sitem .mul {
+  font-size: 10.5px; color: var(--gold); flex: 0 0 auto;
+  background: rgba(251, 191, 36, .1); border-radius: 4px; padding: 0 4px;
+}
 .sitem input[type=number] {
   width: 46px; padding: 2px 4px; text-align: center;
   background: #0b0b12; border: 1px solid var(--line); border-radius: 5px;
@@ -165,6 +184,8 @@ body {
 }
 .field input:focus, .field select:focus { border-color: var(--accent); }
 .field.small input, .field.small select { min-width: 70px; padding: 3px 6px; font-size: 12px; }
+.field.ignored > span { color: #6b6b85; }
+.field.ignored select { opacity: .6; }
 .field .inline { display: flex; gap: 6px; }
 .field .inline input { min-width: 78px; }
 .field .inline select { min-width: 62px; }
@@ -208,13 +229,31 @@ button.primary:active { transform: translateY(1px); }
 }
 .badge.red { color: var(--warn); border-color: #5a2b2b; background: rgba(255, 107, 107, .08); }
 .badge.gold { color: var(--gold); border-color: #5a4a22; background: rgba(255, 209, 102, .08); }
+.badge.warn { color: #ffa94d; border-color: #5a3d22; background: rgba(255, 169, 77, .1); }
+.badge.staff { display: inline-flex; align-items: center; gap: 5px; padding-left: 4px; }
+.badge.staff img { width: 18px; height: 18px; image-rendering: pixelated; }
 
 .row { display: flex; gap: 10px; align-items: flex-start; padding: 5px 0; border-top: 1px dashed #232332; }
 .row:first-of-type { border-top: 0; }
 .row-label {
-  flex: 0 0 88px; font-size: 11.5px; color: #7f7f9a; padding-top: 5px; letter-spacing: .04em;
+  flex: 0 0 104px; font-size: 11.5px; color: #7f7f9a; padding-top: 5px;
+  letter-spacing: .02em; white-space: nowrap;
+}
+@media (max-width: 620px) {
+  .row { flex-direction: column; gap: 2px; }
+  .row-label { flex: none; padding-top: 0; }
+  .topbar { gap: 10px; padding: 10px 14px; }
+  .topbar h1 { font-size: 15px; }
+  .sub { display: none; }
+  .tabs { margin-left: 0; width: 100%; }
+  .tab { padding: 6px 12px; font-size: 12px; }
+  .layout { padding: 12px 12px 32px; }
+  .params, .page-params { padding: 12px; gap: 10px 14px; }
+  .field input, .field select { min-width: 92px; }
 }
 .row-body { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.row.opt .row-label { color: #6b6b85; }
+.row.opt .chip { opacity: .82; }
 .chain-note { font-size: 11.5px; color: var(--accent2); margin-left: 4px; }
 .warn-note { color: var(--gold); }
 
@@ -255,9 +294,47 @@ button.primary:active { transform: translateY(1px); }
 }
 
 .foot {
-  display: flex; gap: 18px; flex-wrap: wrap; justify-content: space-between;
   padding: 14px 22px 26px; color: #5f5f76; font-size: 11.5px;
   border-top: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.foot-main { display: flex; gap: 18px; flex-wrap: wrap; justify-content: space-between; }
+.foot-credit {
+  display: flex; gap: 18px; flex-wrap: wrap;
+  color: #7f7f9a; border-top: 1px dashed #241c44; padding-top: 6px;
+}
+.foot-credit b { color: var(--accent); font-weight: 600; }
+
+/* ---------- 移动端 / 窄屏 ---------- */
+@media (max-width: 980px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .panel {
+    position: fixed; left: 0; top: 0; bottom: 0;
+    width: min(86vw, 330px); z-index: 60;
+    max-height: 100vh; border-radius: 0 14px 14px 0;
+    box-shadow: 0 0 40px rgba(0, 0, 0, .6);
+  }
+  .panel-close { display: inline; }
+}
+
+@media (max-width: 620px) {
+  .topbar { gap: 10px; padding: 10px 14px; }
+  .topbar h1 { font-size: 15px; }
+  .sub { display: none; }
+  .tabs { margin-left: 0; width: 100%; }
+  .tab { padding: 6px 12px; font-size: 12px; }
+  .layout { padding: 12px 12px 32px; }
+  .params, .page-params {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 12px;
+  }
+  .field { min-width: 0; }
+  .field input, .field select { min-width: 0; width: 100%; }
+  .field .inline { display: grid; grid-template-columns: 1fr 58px; gap: 6px; }
+  .params .chk, .page-params .chk { grid-column: 1 / -1; }
+  button.primary { grid-column: 1 / -1; }
+  .results-head { flex-wrap: wrap; }
+  .row { flex-direction: column; gap: 2px; }
+  .row-label { flex: none; padding-top: 0; white-space: normal; }
 }
 
 </style>
@@ -294,11 +371,12 @@ button.primary:active { transform: translateY(1px); }
 
 
 <header class="topbar">
+  <button class="panel-toggle" id="panelToggle" title="展开 / 收起法术面板" aria-label="切换法术面板">☰</button>
   <div class="brand">
     <span class="logo">◈</span>
     <div>
       <h1>跃迁法术收集计算器</h1>
-      <p class="sub">勾选你已有的法术，算出还差什么 · v0.1.0</p>
+      <p class="sub">勾选你已有的法术，算出还差什么 · v0.1.1</p>
     </div>
   </div>
   <nav class="tabs" role="tablist">
@@ -310,14 +388,15 @@ button.primary:active { transform: translateY(1px); }
 
 <main class="layout">
 
-  <!-- ============ 左：法术收集面板 ============ -->
+  <!-- ============ 左：法术收集面板（可收回） ============ -->
   <aside class="panel" id="collectPanel">
     <div class="panel-head">
       <h2>我的法术</h2>
       <button class="link" id="clearOwned">清空</button>
+      <button class="link panel-close" id="panelClose" title="收起面板">✕</button>
     </div>
     <input class="search" id="spellSearch" placeholder="搜索法术名 / ID…">
-    <p class="hint">勾选＝拥有；数量留空按 1 计。常备法术默认视为已有。</p>
+    <p class="hint">勾选＝拥有；数量留空按 1 计。常备法术默认视为已有，但仍会显示需要几个。</p>
     <div class="spell-groups" id="spellGroups"></div>
   </aside>
 
@@ -353,10 +432,6 @@ button.primary:active { transform: translateY(1px); }
         <input type="number" id="maxPerSpell" value="3" min="1" step="1">
       </label>
       <label class="field">
-        <span>法杖容量</span>
-        <input type="number" id="capacity" value="26" min="1" step="1">
-      </label>
-      <label class="field">
         <span>繁茂洞穴倍率（2/3/4 级）</span>
         <input type="number" id="multFungal" value="2.0" min="0" step="0.1">
       </label>
@@ -364,7 +439,7 @@ button.primary:active { transform: translateY(1px); }
         <span>地狱法杖倍率（10 级）</span>
         <input type="number" id="multHell" value="3.0" min="0" step="0.1">
       </label>
-      <label class="chk" title="取消勾选后，零时等可选组件不计入收集难度"><input type="checkbox" id="countOptional" checked> 难度计入可选组件</label>
+      <label class="chk" title="取消勾选后，校准器 / 零时 / 载荷等可选组件不计入收集难度"><input type="checkbox" id="countOptional" checked> 难度计入可选组件</label>
       <label class="field">
         <span>排序</span>
         <select id="sortMode">
@@ -379,37 +454,57 @@ button.primary:active { transform: translateY(1px); }
     <div class="page-params" id="pp-tentacle">
       <label class="field"><span>最大上/下飞数</span><input type="number" id="ttMaxUpDown" value="100" min="0"></label>
       <label class="field" title="按法术个数计：同种 n 个就占 n 个名额"><span>最大速度修正数（含重复）</span><input type="number" id="ttMaxMods" value="5" min="0" max="10"></label>
-      <label class="field"><span>方向</span>
-        <select id="ttDir"><option value="down">向下飞行</option><option value="up">向上飞行</option></select>
+      <label class="field" id="ttStaffField" title="校准器会规避法杖的隐藏速度倍率，因此两者至多用一个"><span id="ttStaffLabel">法杖速度倍率</span>
+        <select id="ttStaff">
+          <option value="1">一般法杖 1.0（26 格）</option>
+          <option value="1.25">迅捷之杖 1.25（19 格）</option>
+          <option value="1.5">多重之杖 1.5（26 格）</option>
+          <option value="any" selected>三种都搜</option>
+        </select>
       </label>
-      <label class="chk"><input type="checkbox" id="ttCalibrator" checked> 带校准器</label>
-      <label class="chk"><input type="checkbox" id="ttReset" checked> 带刷新环</label>
+      <label class="field"><span>载荷</span>
+        <select id="ttPayload">
+          <option value="grab" selected>抓取魔弹 + 内在施法</option>
+          <option value="orbit">抓取魔弹 + 行星环绕 + 环绕拉帕</option>
+        </select>
+      </label>
+      <label class="chk" title="用失效触发投射物 + 瞄准修正间接校准触手（可选，手动瞄准也能打）；启用后法杖倍率不参与计算"><input type="checkbox" id="ttCalibrator" checked> 带校准器（可选）</label>
+      <label class="chk" title="默认只搜一条复制链"><input type="checkbox" id="ttMultiChain"> 启用多复制链</label>
       <label class="chk"><input type="checkbox" id="ttWrap"> 回绕</label>
     </div>
 
     <div class="page-params" id="pp-blackflash" hidden>
       <label class="field"><span>法杖速度倍率</span>
         <select id="bfStaff">
-          <option value="1">不限（1.0，26 格）</option>
+          <option value="1">一般法杖 1.0（26 格）</option>
           <option value="1.25">迅捷之杖 1.25（19 格）</option>
           <option value="1.5">多重之杖 1.5（26 格）</option>
-          <option value="any" selected>两者都搜</option>
+          <option value="any" selected>三种都搜</option>
         </select>
       </label>
       <label class="field"><span>最大修正数</span><input type="number" id="bfMaxCorr" value="8" min="0" max="14"></label>
       <label class="field" title="按法术个数计：同种 n 个就占 n 个名额"><span>最大速度修正数（含重复）</span><input type="number" id="bfMaxSpeed" value="5" min="0" max="10"></label>
+      <label class="field"><span>载荷</span>
+        <select id="bfPayload">
+          <option value="grab" selected>抓取魔弹 + 内在施法</option>
+          <option value="orbit">抓取魔弹 + 行星环绕 + 环绕拉帕</option>
+          <option value="swap">交换者 + 鹿诱饵 + 伤害修正</option>
+        </select>
+      </label>
+      <label class="chk" title="黑洞必须飞出加载区（≥ 2048 px）才能让闪电弹不撞墙"><input type="checkbox" id="bfBhFar" checked> 黑洞远离加载区（≥2048 px）</label>
     </div>
 
     <div class="page-params" id="pp-phase" hidden>
       <label class="field"><span>最大相位个数</span><input type="number" id="phMaxPhases" value="1600" min="1"></label>
       <label class="field"><span>载荷</span>
         <select id="phPayload">
-          <option value="grab">抓取魔弹 + 内在施法</option>
+          <option value="grab" selected>抓取魔弹 + 内在施法</option>
           <option value="orbit">抓取魔弹 + 行星环绕 + 环绕拉帕</option>
           <option value="swap">交换者 + 鹿诱饵 + 伤害修正</option>
         </select>
       </label>
-      <label class="chk"><input type="checkbox" id="phCalibrator" checked> 带校准器</label>
+      <label class="chk" title="校准器只是瞄准辅助，可以手动瞄准省掉"><input type="checkbox" id="phCalibrator" checked> 带校准器（可选）</label>
+      <label class="chk" title="默认只搜一条复制链"><input type="checkbox" id="phMultiChain"> 启用多复制链</label>
       <label class="chk"><input type="checkbox" id="phWrap"> 回绕</label>
     </div>
 
@@ -433,9 +528,17 @@ button.primary:active { transform: translateY(1px); }
   </section>
 </main>
 
+<div class="scrim" id="scrim" hidden></div>
+
 <footer class="foot">
-  <span>数据来源：中文 Noita Wiki（法术等级和生成权重）。权重口径：页面显示百分比，2/3/4 级 × 繁茂倍率、10 级 × 地狱倍率。</span>
-  <span>本工具为社区辅助工具，非官方。</span>
+  <div class="foot-main">
+    <span>数据来源：中文 Noita Wiki（法术等级和生成概率）。收集难度：单次概率取倒数后按 3-范数聚合，越小越容易凑齐。</span>
+    <span>本工具为社区辅助工具，非官方。</span>
+  </div>
+  <div class="foot-credit">
+    <span>致谢：帮助本项目的 Wiki 维护者 —— <b>zb01</b>、<b>sajoyukimi</b>、<b>半导体果冻</b>、<b>kuroleaf</b></span>
+    <span id="pageCredit" hidden></span>
+  </div>
 </footer>
 
 <script>window.SPELL_DATA = {
@@ -491,7 +594,11 @@ button.primary:active { transform: translateY(1px); }
     "投射物伤害": "-25",
     "爆炸半径": "-10",
     "基础价格": "60"
-   }
+   },
+   "roles": [
+    "speed",
+    "damage"
+   ]
   },
   {
    "id": "SPEED",
@@ -538,7 +645,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "速度修正": "× 2.50",
     "基础价格": "100"
-   }
+   },
+   "roles": [
+    "speed"
+   ]
   },
   {
    "id": "ACCELERATING_SHOT",
@@ -587,7 +697,10 @@ button.primary:active { transform: translateY(1px); }
     "速度修正": "× 0.32",
     "后坐力": "+10",
     "基础价格": "190"
-   }
+   },
+   "roles": [
+    "speed"
+   ]
   },
   {
    "id": "DECELERATING_SHOT",
@@ -636,7 +749,10 @@ button.primary:active { transform: translateY(1px); }
     "速度修正": "× 1.68",
     "后坐力": "-10",
     "基础价格": "80"
-   }
+   },
+   "roles": [
+    "speed"
+   ]
   },
   {
    "id": "EXPLOSIVE_PROJECTILE",
@@ -687,7 +803,10 @@ button.primary:active { transform: translateY(1px); }
     "爆炸伤害": "+5",
     "爆炸半径": "+15",
     "基础价格": "120"
-   }
+   },
+   "roles": [
+    "speed"
+   ]
   },
   {
    "id": "HEAVY_SHOT",
@@ -737,7 +856,10 @@ button.primary:active { transform: translateY(1px); }
     "后坐力": "+50",
     "投射物伤害": "+43.75",
     "基础价格": "150"
-   }
+   },
+   "roles": [
+    "speed"
+   ]
   },
   {
    "id": "FIZZLE",
@@ -785,7 +907,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "速度修正": "× 1.20",
     "基础价格": "0"
-   }
+   },
+   "roles": [
+    "speed"
+   ]
   },
   {
    "id": "PHASING_ARC",
@@ -834,7 +959,11 @@ button.primary:active { transform: translateY(1px); }
     "存在时间修正 ⓘ": "+80",
     "速度修正": "× 0.33",
     "基础价格": "170"
-   }
+   },
+   "roles": [
+    "speed",
+    "copy"
+   ]
   },
   {
    "id": "SINEWAVE",
@@ -881,7 +1010,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "速度修正": "× 2.00",
     "基础价格": "10"
-   }
+   },
+   "roles": [
+    "speed"
+   ]
   },
   {
    "id": "CHAOTIC_ARC",
@@ -928,7 +1060,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "速度修正": "× 2.00",
     "基础价格": "10"
-   }
+   },
+   "roles": [
+    "speed"
+   ]
   },
   {
    "id": "LIFETIME",
@@ -976,7 +1111,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "存在时间修正 ⓘ": "+75",
     "基础价格": "250"
-   }
+   },
+   "roles": [
+    "time"
+   ]
   },
   {
    "id": "LIFETIME_DOWN",
@@ -1024,7 +1162,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "存在时间修正 ⓘ": "-42",
     "基础价格": "90"
-   }
+   },
+   "roles": [
+    "time"
+   ]
   },
   {
    "id": "ZERO_DAMAGE",
@@ -1074,11 +1215,14 @@ button.primary:active { transform: translateY(1px); }
     "冰冻伤害": "=0",
     "爆炸伤害": "=0",
     "基础价格": "50"
-   }
+   },
+   "roles": [
+    "time"
+   ]
   },
   {
    "id": "FLY_UPWARDS",
-   "role": "updown",
+   "role": "copy",
    "note": "向上飞行 ×1.2 不受限",
    "guaranteed": false,
    "wiki_page": "向上飞行",
@@ -1122,11 +1266,14 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "速度修正": "× 1.20",
     "基础价格": "20"
-   }
+   },
+   "roles": [
+    "copy"
+   ]
   },
   {
    "id": "FLY_DOWNWARDS",
-   "role": "updown",
+   "role": "copy",
    "note": "向下飞行 ×1.2 不受限",
    "guaranteed": false,
    "wiki_page": "向下飞行",
@@ -1170,7 +1317,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "速度修正": "× 1.20",
     "基础价格": "30"
-   }
+   },
+   "roles": [
+    "copy"
+   ]
   },
   {
    "id": "TENTACLE_TIMER",
@@ -1227,7 +1377,10 @@ button.primary:active { transform: translateY(1px); }
     "质量": "0.08",
     "解锁条件": "收集 真理魔球",
     "基础价格": "250"
-   }
+   },
+   "roles": [
+    "carrier"
+   ]
   },
   {
    "id": "BLACK_HOLE",
@@ -1280,7 +1433,11 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "-0.2",
     "质量": "0.3",
     "基础价格": "200"
-   }
+   },
+   "roles": [
+    "carrier",
+    "calibrator"
+   ]
   },
   {
    "id": "BLACK_HOLE_DEATH_TRIGGER",
@@ -1341,7 +1498,11 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "-0.2",
     "质量": "0.3",
     "基础价格": "220"
-   }
+   },
+   "roles": [
+    "carrier",
+    "calibrator"
+   ]
   },
   {
    "id": "LIGHTNING",
@@ -1392,7 +1553,10 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "0.55",
     "质量": "0.05",
     "基础价格": "250"
-   }
+   },
+   "roles": [
+    "carrier"
+   ]
   },
   {
    "id": "SLOW_BULLET_TIMER",
@@ -1453,7 +1617,10 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "1",
     "质量": "0.09",
     "基础价格": "200"
-   }
+   },
+   "roles": [
+    "carrier"
+   ]
   },
   {
    "id": "LARPA_CHAOS",
@@ -1501,7 +1668,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "最大存在时间限制": "300",
     "基础价格": "260"
-   }
+   },
+   "roles": [
+    "limit"
+   ]
   },
   {
    "id": "LARPA_CHAOS_2",
@@ -1550,7 +1720,10 @@ button.primary:active { transform: translateY(1px); }
     "最大存在时间限制": "200",
     "解锁条件": "打开 黑暗宝箱",
     "基础价格": "300"
-   }
+   },
+   "roles": [
+    "limit"
+   ]
   },
   {
    "id": "ENERGY_SHIELD_SHOT",
@@ -1598,7 +1771,10 @@ button.primary:active { transform: translateY(1px); }
     "速度修正": "× 0.40",
     "最大存在时间限制": "150-250",
     "基础价格": "180"
-   }
+   },
+   "roles": [
+    "limit"
+   ]
   },
   {
    "id": "TELEPORT_PROJECTILE_CLOSER",
@@ -1650,7 +1826,10 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "1.7",
     "质量": "0.04",
     "基础价格": "130"
-   }
+   },
+   "roles": [
+    "payload"
+   ]
   },
   {
    "id": "CASTER_CAST",
@@ -1697,7 +1876,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "散射角度修正": "-24",
     "基础价格": "70"
-   }
+   },
+   "roles": [
+    "payload"
+   ]
   },
   {
    "id": "SWAPPER_PROJECTILE",
@@ -1748,7 +1930,10 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "1.7",
     "质量": "0.04",
     "基础价格": "100"
-   }
+   },
+   "roles": [
+    "payload"
+   ]
   },
   {
    "id": "EXPLODING_DEER",
@@ -1800,11 +1985,14 @@ button.primary:active { transform: translateY(1px); }
     "质量": "0.05",
     "解锁条件": "收集 真理魔球",
     "基础价格": "170"
-   }
+   },
+   "roles": [
+    "payload"
+   ]
   },
   {
    "id": "DAMAGE",
-   "role": "payload",
+   "role": "damage",
    "note": "伤害增强（交换鹿需非零伤害）",
    "guaranteed": false,
    "wiki_page": "伤害增强",
@@ -1849,11 +2037,14 @@ button.primary:active { transform: translateY(1px); }
     "后坐力": "+10",
     "投射物伤害": "+10",
     "基础价格": "140"
-   }
+   },
+   "roles": [
+    "damage"
+   ]
   },
   {
    "id": "LINE_ARC",
-   "role": "aux",
+   "role": "calibrator",
    "note": "线性弧（校准器）",
    "guaranteed": false,
    "wiki_page": "线性弧",
@@ -1897,11 +2088,15 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "投射物伤害": "+5",
     "基础价格": "30"
-   }
+   },
+   "roles": [
+    "calibrator",
+    "damage"
+   ]
   },
   {
    "id": "NOLLA",
-   "role": "aux",
+   "role": "calibrator",
    "note": "零时",
    "guaranteed": false,
    "wiki_page": "零时",
@@ -1945,7 +2140,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "解锁条件": "击杀 三眼之足",
     "基础价格": "50"
-   }
+   },
+   "roles": [
+    "calibrator"
+   ]
   },
   {
    "id": "RESET",
@@ -1992,149 +2190,14 @@ button.primary:active { transform: translateY(1px); }
     "充能时间": "-25 ( -0.42 )",
     "解锁条件": "击杀 法师领主",
     "基础价格": "120"
-   }
-  },
-  {
-   "id": "BURST_2",
-   "role": "aux",
-   "note": "多重法术（二重施法）",
-   "guaranteed": false,
-   "wiki_page": "多重法术",
-   "sprite_index": 162,
-   "status": "ok",
-   "name_official": "二重法术",
-   "type": "多重释放",
-   "mana": "0",
-   "price": "140",
-   "tiers_raw": {
-    "0": 0.8,
-    "1": 0.8,
-    "2": 0.8,
-    "3": 0.8,
-    "4": 0.8,
-    "5": 0.8,
-    "6": 0.8,
-    "7": -1.0,
-    "8": -1.0,
-    "9": -1.0,
-    "10": -1.0
    },
-   "tiers_pct": {
-    "0": 1.8,
-    "1": 0.95,
-    "2": 0.58,
-    "3": 0.62,
-    "4": 0.56,
-    "5": 0.64,
-    "6": 0.97,
-    "7": 0.0,
-    "8": 0.0,
-    "9": 0.0,
-    "10": 0.0
-   },
-   "fields": {
-    "官方中文名": "二重法术",
-    "类型": "多重释放",
-    "法力消耗": "0",
-    "抽取数": "2",
-    "基础价格": "140"
-   }
-  },
-  {
-   "id": "BURST_3",
-   "role": "aux",
-   "note": "多重法术（三重施法）",
-   "guaranteed": false,
-   "wiki_page": "多重法术",
-   "sprite_index": 163,
-   "status": "ok",
-   "name_official": "三重法术",
-   "type": "多重释放",
-   "mana": "2",
-   "price": "160",
-   "tiers_raw": {
-    "0": -1.0,
-    "1": 0.7,
-    "2": 0.7,
-    "3": 0.7,
-    "4": 0.7,
-    "5": 0.7,
-    "6": 0.7,
-    "7": -1.0,
-    "8": -1.0,
-    "9": -1.0,
-    "10": -1.0
-   },
-   "tiers_pct": {
-    "0": 0.0,
-    "1": 0.83,
-    "2": 0.51,
-    "3": 0.54,
-    "4": 0.49,
-    "5": 0.56,
-    "6": 0.85,
-    "7": 0.0,
-    "8": 0.0,
-    "9": 0.0,
-    "10": 0.0
-   },
-   "fields": {
-    "官方中文名": "三重法术",
-    "类型": "多重释放",
-    "法力消耗": "2",
-    "抽取数": "3",
-    "基础价格": "160"
-   }
-  },
-  {
-   "id": "BURST_4",
-   "role": "aux",
-   "note": "多重法术（四重施法）",
-   "guaranteed": false,
-   "wiki_page": "多重法术",
-   "sprite_index": 164,
-   "status": "ok",
-   "name_official": "四重法术",
-   "type": "多重释放",
-   "mana": "5",
-   "price": "180",
-   "tiers_raw": {
-    "0": -1.0,
-    "1": -1.0,
-    "2": 0.4,
-    "3": 0.5,
-    "4": 0.6,
-    "5": 0.6,
-    "6": 0.6,
-    "7": -1.0,
-    "8": -1.0,
-    "9": -1.0,
-    "10": -1.0
-   },
-   "tiers_pct": {
-    "0": 0.0,
-    "1": 0.0,
-    "2": 0.29,
-    "3": 0.38,
-    "4": 0.42,
-    "5": 0.48,
-    "6": 0.73,
-    "7": 0.0,
-    "8": 0.0,
-    "9": 0.0,
-    "10": 0.0
-   },
-   "fields": {
-    "官方中文名": "四重法术",
-    "类型": "多重释放",
-    "法力消耗": "5",
-    "抽取数": "4",
-    "基础价格": "180"
-   }
+   "roles": [
+    "aux"
+   ]
   },
   {
    "id": "ADD_TRIGGER",
-   "role": "aux",
+   "role": "trigger",
    "note": "追加触发（击败法师领主必定掉落 → 视为常备）",
    "guaranteed": true,
    "wiki_page": "追加触发",
@@ -2176,11 +2239,14 @@ button.primary:active { transform: translateY(1px); }
     "法力消耗": "10",
     "解锁条件": "击杀 法师领主",
     "基础价格": "100"
-   }
+   },
+   "roles": [
+    "trigger"
+   ]
   },
   {
    "id": "ADD_TIMER",
-   "role": "aux",
+   "role": "trigger",
    "note": "追加定时触发（击败法师领主必定掉落 → 视为常备）",
    "guaranteed": true,
    "wiki_page": "追加触发",
@@ -2223,11 +2289,14 @@ button.primary:active { transform: translateY(1px); }
     "定时时间": "20",
     "解锁条件": "击杀 法师领主",
     "基础价格": "150"
-   }
+   },
+   "roles": [
+    "trigger"
+   ]
   },
   {
    "id": "ADD_DEATH_TRIGGER",
-   "role": "aux",
+   "role": "trigger",
    "note": "追加失效触发（击败法师领主必定掉落 → 视为常备）",
    "guaranteed": true,
    "wiki_page": "追加触发",
@@ -2269,11 +2338,14 @@ button.primary:active { transform: translateY(1px); }
     "法力消耗": "20",
     "解锁条件": "击杀 法师领主",
     "基础价格": "150"
-   }
+   },
+   "roles": [
+    "trigger"
+   ]
   },
   {
    "id": "DELAYED_SPELL",
-   "role": "aux",
+   "role": "calibrator",
    "note": "延迟施法",
    "guaranteed": false,
    "wiki_page": "延迟施法",
@@ -2320,7 +2392,10 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "0.55",
     "质量": "0.04",
     "基础价格": "240"
-   }
+   },
+   "roles": [
+    "calibrator"
+   ]
   },
   {
    "id": "IF_HP",
@@ -2367,7 +2442,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "解锁条件": "找到实验性魔杖",
     "基础价格": "100"
-   }
+   },
+   "roles": [
+    "aux"
+   ]
   },
   {
    "id": "TAU",
@@ -2414,7 +2492,10 @@ button.primary:active { transform: translateY(1px); }
     "施放延迟": "+35 ( +0.58 )",
     "解锁条件": "击杀 古代炼金术师",
     "基础价格": "200"
-   }
+   },
+   "roles": [
+    "aux"
+   ]
   },
   {
    "id": "DIVIDE_2",
@@ -2462,7 +2543,10 @@ button.primary:active { transform: translateY(1px); }
     "投射物伤害": "-5",
     "解锁条件": "打开 珊瑚宝箱",
     "基础价格": "200"
-   }
+   },
+   "roles": [
+    "dn"
+   ]
   },
   {
    "id": "DIVIDE_3",
@@ -2510,7 +2594,10 @@ button.primary:active { transform: translateY(1px); }
     "投射物伤害": "-10",
     "解锁条件": "打开 珊瑚宝箱",
     "基础价格": "250"
-   }
+   },
+   "roles": [
+    "dn"
+   ]
   },
   {
    "id": "DIVIDE_4",
@@ -2558,7 +2645,10 @@ button.primary:active { transform: translateY(1px); }
     "投射物伤害": "-15",
     "解锁条件": "打开 珊瑚宝箱",
     "基础价格": "300"
-   }
+   },
+   "roles": [
+    "dn"
+   ]
   },
   {
    "id": "DIVIDE_10",
@@ -2609,7 +2699,10 @@ button.primary:active { transform: translateY(1px); }
     "投射物伤害": "-37.5",
     "解锁条件": "贪婪 成就",
     "基础价格": "400"
-   }
+   },
+   "roles": [
+    "dn"
+   ]
   },
   {
    "id": "SLIMEBALL",
@@ -2662,7 +2755,10 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "0",
     "质量": "0.055",
     "基础价格": "130"
-   }
+   },
+   "roles": [
+    "speed"
+   ]
   },
   {
    "id": "GAMMA",
@@ -2709,7 +2805,10 @@ button.primary:active { transform: translateY(1px); }
     "施放延迟": "+15 ( +0.25 )",
     "解锁条件": "击杀 古代炼金术师",
     "基础价格": "200"
-   }
+   },
+   "roles": [
+    "aux"
+   ]
   },
   {
    "id": "MEGALASER",
@@ -2760,7 +2859,10 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "0",
     "质量": "0",
     "基础价格": "300"
-   }
+   },
+   "roles": [
+    "carrier"
+   ]
   },
   {
    "id": "QUANTUM_SPLIT",
@@ -2807,7 +2909,10 @@ button.primary:active { transform: translateY(1px); }
     "施放延迟": "+5 ( +0.08 )",
     "抽取数": "1",
     "基础价格": "200"
-   }
+   },
+   "roles": [
+    "limit"
+   ]
   },
   {
    "id": "X_RAY",
@@ -2857,7 +2962,10 @@ button.primary:active { transform: translateY(1px); }
     "空气阻力": "0.55",
     "质量": "0.05",
     "基础价格": "230"
-   }
+   },
+   "roles": [
+    "carrier"
+   ]
   },
   {
    "id": "IF_HALF",
@@ -2904,7 +3012,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "解锁条件": "找到实验性魔杖",
     "基础价格": "100"
-   }
+   },
+   "roles": [
+    "aux"
+   ]
   },
   {
    "id": "IF_END",
@@ -2951,148 +3062,10 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "解锁条件": "找到实验性魔杖",
     "基础价格": "10"
-   }
-  },
-  {
-   "id": "IF_ELSE",
-   "role": "aux",
-   "note": "条件-否则（可视为常备）",
-   "guaranteed": true,
-   "wiki_page": "条件要求(法术)",
-   "sprite_index": 411,
-   "status": "ok",
-   "name_official": "要求 - 否则",
-   "type": "其他",
-   "mana": "0",
-   "price": "10",
-   "tiers_raw": {
-    "0": -1.0,
-    "1": -1.0,
-    "2": -1.0,
-    "3": -1.0,
-    "4": -1.0,
-    "5": -1.0,
-    "6": -1.0,
-    "7": -1.0,
-    "8": -1.0,
-    "9": -1.0,
-    "10": 1.0
    },
-   "tiers_pct": {
-    "0": 0.0,
-    "1": 0.0,
-    "2": 0.0,
-    "3": 0.0,
-    "4": 0.0,
-    "5": 0.0,
-    "6": 0.0,
-    "7": 0.0,
-    "8": 0.0,
-    "9": 0.0,
-    "10": 1.67
-   },
-   "fields": {
-    "官方中文名": "要求 - 否则",
-    "类型": "其他",
-    "法力消耗": "0",
-    "抽取数": "1",
-    "解锁条件": "找到实验性魔杖",
-    "基础价格": "10"
-   }
-  },
-  {
-   "id": "IF_ENEMY",
-   "role": "aux",
-   "note": "条件-敌人数量（可视为常备）",
-   "guaranteed": true,
-   "wiki_page": "条件要求(法术)",
-   "sprite_index": 406,
-   "status": "ok",
-   "name_official": "要求 - 敌人数量",
-   "type": "其他",
-   "mana": "0",
-   "price": "100",
-   "tiers_raw": {
-    "0": -1.0,
-    "1": -1.0,
-    "2": -1.0,
-    "3": -1.0,
-    "4": -1.0,
-    "5": -1.0,
-    "6": -1.0,
-    "7": -1.0,
-    "8": -1.0,
-    "9": -1.0,
-    "10": 1.0
-   },
-   "tiers_pct": {
-    "0": 0.0,
-    "1": 0.0,
-    "2": 0.0,
-    "3": 0.0,
-    "4": 0.0,
-    "5": 0.0,
-    "6": 0.0,
-    "7": 0.0,
-    "8": 0.0,
-    "9": 0.0,
-    "10": 1.67
-   },
-   "fields": {
-    "官方中文名": "要求 - 敌人数量",
-    "类型": "其他",
-    "法力消耗": "0",
-    "抽取数": "1",
-    "解锁条件": "找到实验性魔杖",
-    "基础价格": "100"
-   }
-  },
-  {
-   "id": "IF_PROJECTILE",
-   "role": "aux",
-   "note": "条件-投射物数量（可视为常备）",
-   "guaranteed": true,
-   "wiki_page": "条件要求(法术)",
-   "sprite_index": 407,
-   "status": "ok",
-   "name_official": "要求 - 投射物法术数量",
-   "type": "其他",
-   "mana": "0",
-   "price": "100",
-   "tiers_raw": {
-    "0": -1.0,
-    "1": -1.0,
-    "2": -1.0,
-    "3": -1.0,
-    "4": -1.0,
-    "5": -1.0,
-    "6": -1.0,
-    "7": -1.0,
-    "8": -1.0,
-    "9": -1.0,
-    "10": 1.0
-   },
-   "tiers_pct": {
-    "0": 0.0,
-    "1": 0.0,
-    "2": 0.0,
-    "3": 0.0,
-    "4": 0.0,
-    "5": 0.0,
-    "6": 0.0,
-    "7": 0.0,
-    "8": 0.0,
-    "9": 0.0,
-    "10": 1.67
-   },
-   "fields": {
-    "官方中文名": "要求 - 投射物法术数量",
-    "类型": "其他",
-    "法力消耗": "0",
-    "抽取数": "1",
-    "解锁条件": "找到实验性魔杖",
-    "基础价格": "100"
-   }
+   "roles": [
+    "aux"
+   ]
   },
   {
    "id": "TRUE_ORBIT",
@@ -3141,7 +3114,10 @@ button.primary:active { transform: translateY(1px); }
     "存在时间修正 ⓘ": "+80",
     "投射物伤害": "+2.5",
     "基础价格": "40"
-   }
+   },
+   "roles": [
+    "payload"
+   ]
   },
   {
    "id": "ORBIT_LARPA",
@@ -3188,58 +3164,14 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "解锁条件": "击杀 龙",
     "基础价格": "240"
-   }
-  },
-  {
-   "id": "CRITICAL_HIT",
-   "role": "payload",
-   "note": "暴击增强（交换鹿用伤害修正的替代品）",
-   "guaranteed": false,
-   "wiki_page": "暴击增强",
-   "sprite_index": 232,
-   "status": "ok",
-   "name_official": "暴击增强",
-   "type": "投射修正",
-   "mana": "5",
-   "price": "140",
-   "tiers_raw": {
-    "0": -1.0,
-    "1": 0.5,
-    "2": 0.6,
-    "3": 0.6,
-    "4": 0.7,
-    "5": 0.6,
-    "6": -1.0,
-    "7": -1.0,
-    "8": -1.0,
-    "9": -1.0,
-    "10": -1.0
    },
-   "tiers_pct": {
-    "0": 0.0,
-    "1": 0.59,
-    "2": 0.44,
-    "3": 0.46,
-    "4": 0.49,
-    "5": 0.48,
-    "6": 0.0,
-    "7": 0.0,
-    "8": 0.0,
-    "9": 0.0,
-    "10": 0.0
-   },
-   "fields": {
-    "官方中文名": "暴击增强",
-    "类型": "投射修正",
-    "法力消耗": "5",
-    "抽取数": "1",
-    "暴击率": "+15",
-    "基础价格": "140"
-   }
+   "roles": [
+    "payload"
+   ]
   },
   {
    "id": "HORIZONTAL_ARC",
-   "role": "payload",
+   "role": "calibrator",
    "note": "水平弧（交换鹿用伤害修正的替代品）",
    "guaranteed": false,
    "wiki_page": "水平路径",
@@ -3283,7 +3215,11 @@ button.primary:active { transform: translateY(1px); }
     "抽取数": "1",
     "投射物伤害": "+7.5",
     "基础价格": "20"
-   }
+   },
+   "roles": [
+    "calibrator",
+    "damage"
+   ]
   }
  ]
 };</script>
@@ -3320,9 +3256,6 @@ window.ICON_DATA = {
   "LINE_ARC": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAA1ElEQVR4nO3YsQ3CMBAF0H9fqRA1JRI9HcxBwxYoE9BRsAFiCyZBzEDPEqYLLlwEEcd8514VRc5dcV/RJYBzzpVkOYqe7yGk7h+3UWOzQXoT4ghxNlShzfXZxeZxWCXrhvCJlkeolgg1uWOTGyGOmFqEFu2teGyqmgBRU4Rmu1Nyh5kv193167IvHpuqJkCIszGbfbsLheh8LH5WfgKEOEIcIY6Y8jqdm/V4U8lPgBDX4A+EHz725SdAiLMxm/XZbSY3AUJcU6qx/1qsJULOOecclL0BmGEn2s5rpBgAAAAASUVORK5CYII=',
   "NOLLA": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABdUlEQVR4nO2ZsUoEMRCG/xl8mOut9jpfwkpQUawsFOys7QQtrETxDqx8ietOG3vfZuzCL2TWZPf0SDZ/NQOzSWA+ZmYToKlplIQdM9sj9yYEicxjH5vZjNwrsk+c/Z7JvqX1vzBQisKlqAyhNbkd2e9kP5J9TvZu5t6fZD+EA4ksJpUBRU0IJeLkiTF7c2L2E9Y8zsGp+AwoKkboiNyX37Dxml3P+ozH4VCcis+AonDt9Mw23KS8atPFqlYKTiISEDUzODiFM5jZR2x2Kj4DispmoSdnJI5Wm5TZaUB1WjtrhlFcRE6ryYCiMoTMibsMH4jcxwI2hZOZXZB7Fz20iFSTAUVNjWyMUqpTbrObRAYUU25kKcqtTtYaWeEIzch9de58lrGROEWJ906dc3d0QPu2cbqan/rlH+DEaj/15SI05o5o5NUichpo8aOEYgoI9eC08QcOAGc5s1PxGVBMDaH/fGa1n83umuJX1WRAt32ApiZsV98c2pfi0sEQjwAAAABJRU5ErkJggg==',
   "RESET": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABDUlEQVR4nO2ZMQ7CMBAE1wtPQKJBKWl5DbyGktckr6FNGdEg5QvBVARH4MIxkKzxVI4sKyvt5S6+AzKZKEzMYXu97PqHxa0KOtxx34tYb85jNRDiEOIs40LlVj5WZlVsQ15s2+bkrKuxoSXvAJFqFrKesAkNlVBs29Qh4STvAJFsCLVPK78dNjEa5B0gUipk1s08TpGakPKdNjcjyTtApJSF7Awyjw+fNnkHCHEIcQhxCHEIcQhxCHEIcQhxiKT6Qt3zEu32bcyqOP5Y14sGV1tSDhDiGN/GHH6tbb7US3enu0FGqqduLSb7ERP/MCOz/llYObbYDYoUcOhXecAhhok5nMesH0A+C2UyiOMOdQFqtTjwlcMAAAAASUVORK5CYII=',
-  "BURST_2": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABA0lEQVR4nO2Y0Q2EIBBEdze2YB8W4dZkDSR2pEXYh0V4X2f4OC6LYMzgvi8SBUlmGHYlchzHeRJ+6sPLshzfsape3ocQOELgcO6Efd9P6fu+56u2saAGa8ErIAQOW6xiwWKnXAvFrOt6jkMI3IwCQuBwLOswDJcXSlmoxDaWRIJXQAicLpamxE4lF5wleZpVQAic7o5Fp2mqkjwhurCaVUAIHE49qHXBzfN8jsdxzJqrXk6/NYVK0MwGH/4QC4HDlpdKEmnbtp+1TSqR1C0ERnfHorFtapXNzR5iIXA4d4KlSY+TJFVaxymk/nf6rSmkBun/dFVVujb4QyxPb8BxHIeg+QAzp0/vnRreJQAAAABJRU5ErkJggg==',
-  "BURST_3": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABCUlEQVR4nO2WwQ1FQBCGfxMtuCtBEbYCmnDXhMRdE1RABy76UIR3eps9kNiHPDM732kibDb5P38GUBRF+ScRXkDXddt3rqrK604E5hBCU2hdVxt3kiT2+3me7XNf+r63c5qmu+8cqcU+AYJUhVZHlTO0bWvnsixvV+hIJ/YJEJgTX9HmDRCYQ5Ck0LIsds6yzOuguq5vaaTgEiBIUujNTNMkMwGC1F1oHMft10ZyOdNIva7TjInBsHlE/cQEqQoZY6I7GinP8922ObMjDcMQiU+AwJz4iUPdtfyJ5hGVACEEhcxBI/lq4DbSleYRlQAh5BYyjlpnaJpm93lRFFuwCdC/L6AoigLWfACSmE7sJA3NIgAAAABJRU5ErkJggg==',
-  "BURST_4": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABJ0lEQVR4nO2YvQ2EMAyFfRYDMAIFA1CwAWQDlqCnYAQKVmECGIIBsgENG9xVZ6Ug4ufg7mz8VRYiVqT39OIEQFEURVEY89i7YJqm57tu25a+F0WxurZpGqrzPF/8ZxgGqruuW90fAnMQmBNssYqPqqrgqJ18zPNMdZZltIcwDBetxV4BBEkWmjbY5pukaSpfAQRJFhrHkeokSXY1uiKRbqEAgtSD7N+w1spUAEGShYwxNGP0ff88mkg+6rpeHK1nZ/7ZcniJUgCBOcEVTc861KyTPL7bGXsFEKRayFycSGeBwBwE5gRXNHXHct/7zyfJI0oBhDtYyHgSyYf7POiy1063UADhzilkPbekKIqoLsvSTRKyXxzHi322JI8oBfDXG1AURQHWvADJNlsBJrWIGwAAAABJRU5ErkJggg==',
   "ADD_TRIGGER": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABeklEQVR4nO2YsUoDQRCGZ4crFGOdJsV1chDE0sbKNmDpC6hVxMLnsBCtjC9gGbC1srEUEQ67K7ZJfYopAlrd+B/ccp7ncuztftUkmZsE5s/8s0sUCAQCXaJsFM2vhl9FvHm6sPIdBUyOw+Q4kZWiO7vwak42YXIcJh8klP9iqqTTwU3d+8n1+8lf6/e2A0yOo5o+8Pl4IO3O7h5mRTza2jgu4mhyJPmr+1uJ9duH5MeH+5K/vjdX3naAyTcjy0A28fmZyID0a62pxZOx5GcXl1LH6w4w+SChFMwIp01JNqOxhGvDbYmXWAjysU46/UkxmV1vO8DkOMq0k5RXYqqUCoKyMbFcvFR/oKsn2Or5iep2JOc7wOQ4qs0UKsnMNIVQNiAVlIeGHSlMoV4aWQLmgqaDuw3Kw2ReKDMNO1XS0Lx69SdmchzV9IFwIvtnmHyQUN7wXggP7HiCC/dC3kqozaRqc+fjRQeYHCeyURRXZdswOQ53/QMCAeqWb6fLh5mpYo0IAAAAAElFTkSuQmCC',
   "ADD_TIMER": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABZElEQVR4nO2ZsUrEQBCG/x2uljRBQftDBFG4IDa+hDZ5ArlOUlv5BNfJvYCp7g3SyxHBQxCxs/BA2OY6y1jdGCGHG7PLObf7VcMyO1mYP/8mDBAIdEKZJO2eXFbLONo7asyJdga/1ll8PDSvv884nk/HRmdaQhAOQTg9k6QuslmVX5dTVKs/n3rWAYIPErq+iDhO07SVS5iQ5zm7XDrxrAMEHyRUliX+KwThEISj2m7IsowdY9D/5PXjw36rOrO3bY67OJv4DhCEo7psNpHT49Pr98O2zqxfiAThEISjbBVaJScXstmoDhB8+BYyIUmSRqlofcPScgFBOAThKGt/UgYOo7Xm/DiOw0Xmp4TylrJxLSeCcAjCUS5k83I/4vz90yun7kQQDkE4PVuF7sbD6q9yKorC3w4QhKNMkg7ObysbAw6TednzZBhcaPNcaFEbg9bnWT/mXJbGrN69xLTuAwQCWC9flwFoh/V+oy8AAAAASUVORK5CYII=',
   "ADD_DEATH_TRIGGER": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABC0lEQVR4nO3YMQrCQBAF0L9DzuABrHIAy+ApRLAQBAUbW+8giJDCRlAIWAjiKSSlB0jlAbxErAxTJIQ40TDsvGoZZkhgJ5vdBYwxpktOUpw9X/m3tWG/J3r2B0E5gnLun23zi3YiKEdQznXVNm21E0E5gnKBpDh9ZKXxaBA2yvF6Bgi+tdBoMqvNiS5JMY53m9KcmI1vLN+7GSAoR1COoBzBh1UoZT8jvmLwFYnHJfnezQBBOde04Hi953V7nnNyKsbT2Rx1+Yvx0E5kajlJ23DL1boYH/bb2jiXCtpJ/UdMUM5Jiu1qsQV+H+qr7nN4a1XF20JQjqBcICmu2gY3jXs9A9T1CxhjDFR7A8oAV1vwfmPIAAAAAElFTkSuQmCC',
@@ -3340,28 +3273,30 @@ window.ICON_DATA = {
   "X_RAY": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABbklEQVR4nO2ZMU7DMBSGn5/anaXlAhyhQxEskXIEDsANsreMpXtvwAG4AZG6UIFQj8AFUhZ2KpXN/oc8yY4t6IvzTU9V7VR6n387rqFEbJdvp5DvF4/XJsVzmZTDpJxRKm029arz2CJCJ/UdYFKOSaXNDZW2npXz1rH7+t3WO6ptXZUP1FUn9R1gUo4J1QY1QFVu7109umrf046f7nGvT26evTCnj07qO8CkHONznkE9EEmVUI6gFoKaIaiW+g4w5ZxCiLR5SfjMUwwp1Mfj9A7OMOMDpJD72IuPw4utf6bO5BnN81rETLkp1Hx/2fpyOmlVywvQpoE5s+sAk3LMX77IS1TDG1mu90INJtLFpPPYrBcxk3JMzGBMpMVzFTR2fbex9XC1mG0KIZhCUsKEJlUWi5iprym09fjPC5MnZiNbQyJJSEmlvgNMfb1aXETokYpG0Gy4WjwnzLlpE6qT+kXM1CeFNMKkHP7vHxDLL+q/g6uPwCpZAAAAAElFTkSuQmCC',
   "IF_HALF": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABtUlEQVR4nO2avU7DMBDHr6dsMCJeIEOZGKqkYurMxwuwU3WlExtTtkywRoG3KDBXDBWJOjC1Ay/AwDMwxT5LnLCbIOFz/tPFVtzhfr6vZgCM0sXmurGri6N76EBtzoyz8rSxP26nL42N4LkQPFfEuXiaDO/UxmIDu7q+zZkxweYkSZ/VRlaeifEAgiSEuhKHTVlv57tis6orhU0fhbxAaHao7dIRm7dzjc34qXtsRF1iBEkIVcTFY5JoDCTIOhWHDfcuh9NkdKzsVV3J9wCC1FqIikWCrBef8KO4dS7y5MXDr5FHlAcQPFfElrtMUnMVrX+MughArU9GQ6fII8oDCJ4rMhIKk6RsaiGbUpme/7V+3aqHRCMUnAcQpNZCVFykotHJSFhMzUNtmsiC9gCC1I4sZbChtcrj/p7unuaX+uWOZkpBeAAhhNFiTrCxkVE7MTjRRLZcv0OwHkAIYS6Ut/gBbr5kdFuZnjbfzK50dwbQz4X8RahgmnFXuZ6zdIxI3l9iBM814DZsktoBUwtRbKw6NaL+Dw4xCLXpyFyxaYOT95cYIQSEbCbYVH/RecX9xx7wP/UNTNrmyZx9NgkAAAAASUVORK5CYII=',
   "IF_END": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABm0lEQVR4nO2avU7DMBSFT64isXfgBTKUiaFqEANipvAYRF1hYmPqxgRrZR4jwNypIhEDUxj6AjwFU8ONlCvs/Ihep2dyEtuqdL4eX8cJwBQtzMW2vblP3tCj4rS42bazq6OnpvMQlIugXCHH5nQav5ZPFmbWNU4cm2Q6fiwfpAWa4qTeAYJyBfxCwmmdZ41xkrAx+dftX/dtcFLvAMEnhLrCiWPzfvmLx8lLPR6xY3+vHCAoV2jT6XxyXLbXeYZdEkG5CL6mUB+JtF/IBptCbRKpsgCxsrlN/eOVA4ShISSJp42NODau83DM1DtAGDJCo8nZuK4MthEvlRO+wWeaHwpjWZqpd4CgXGEfk3I8uCTMjJBIxmKsegcIQ0No9fHJrg6cxi6/6+9nQv1js6ipd4DgK0IR24Xdza/LXdjD8nlWt5BJeLiWzbHjOyL1DhCGkEKrSvK4yRWbhCEnLYheOUDwCaHI8f3PKC3KFJLkio0R6qJKIu3L6R1S0NW5WJuT99hirNRH/Z+Y4Osx66bnjz26EkG56L9/QFv9AC771rtNfuA0AAAAAElFTkSuQmCC',
-  "IF_ELSE": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABnklEQVR4nO2asU7DMBCG/5z6BBl4gQxhYohS1AF1pvAYVF1hYmPqxkTXKjxGgDliqEiUgSkZ8gIM3dmYEq6SrcY0bbGdbzpXF7vS/fl9suOA4c2jyzquHqZvUIA/ez+7eRXlPC6fJ13MX7FnCZpD0ByHl2YUDpvSr7J0a7mHcXFbx9PQf6rjKCvvRPmynPT6dCHKb/PftK8AQXMcPuhKTh9Xv1LhnL90I5uqd6H/KqFdSskl1AYuIW8H6Wr/EhM0Z9AmaRycNfEqS7duZLMT8TzLLzaIiyZc5+/ltrWMrQDBVBfitHEJN7jwodD/cNmMFJ3HqAoQbHAhjswl+MbE3YnLZkNOQPP7OPCVnMeoChBsk5AMWTvNW2iZCyEUGpgdFSBozmAfk3LZyOTUFQTNIdgsIZf1P23aadlGZnUFCLZJKMk/m3idp6VIEpFiO53QN6ytAMFUCXmSCwvZJYUbF/5fT6ExjybCtYD+XMgMF0qY88jYkAc781ElabGWUS8xQXMcPugvOI4AQXOc/pr1yBBMdaGq/9jjMNCB1tkbP+QpEV9/sTHXAAAAAElFTkSuQmCC',
-  "IF_ENEMY": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAB6ElEQVR4nO2aPUsDQRCGJ0P+gI1YilfEyiJegjYpxY/eThAMAZsoSMTGKghiQGIKi3CCYGcfFcuQInghhVVSxDpYaG9lld05uCF3ySnZ3XuryVxuCcyzM7M7SQCjTKN3NLLdneUbiEDTrGmVnc2RPTjPv4xsBMWFoLiSXIjzdqoqHjR6MGnop1nTItis2Zln8aDsbGkTAQSdEIpKHDZOp388KTbtjiuwibOQEggV5qXthMTmbVtik32KHhutNjGCTgi5JMRZUmg8SBA/FYcN9y6HUy69Iux2x9U/Agi69kJULBLEX/8EX3F+LvNc1e/GZh6tIoCguJJsu8sUtbCi/Y+nLwIQ/lw6FSrzaBUBBMWV9BQUpkgF6YWCtMp0/a9uqy8+2BIh4yKAoGsvREUz1ePq0DdTDb/fhV1keh5q00JmdAQQdD2RZQJgQ7UwJ9vg2tJrdRxOUQlBcSGYfC+0n98T9mWlJOyzUkV+6XBj7DrNrsxgxkUAwWSE7p0HYV/XT3xxKn74v+s5bZXlbfNp4UCezgDieyF1EXJJ0dklxYgWKVq80uuLkfygZsiMpPwmRjAhC7kEpyKD0+3PhTiR1UD6g2jAZCRuLhYPOGZJib+YvEc15bcCDD6U38QIJiP0n7LiP3vAbOoX3wresbgBr+oAAAAASUVORK5CYII=',
-  "IF_PROJECTILE": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAB6UlEQVR4nO2av0vDUBDHr48iTi4FQeiWoZ1aLG3pFCfBH4Pov2DpomDp4ObUzaEo6FLi7KY4VF0NCsWUip3aoejs4KBbJqderpCjSROh76Xf6XJ5yfL95O5ekhgwKrT6R6PY2k6fQwgKck+tbmyM4uFJ+XEUC5BcAiRXnLO4nE+d4YlWH6a1Psg9NYJNKV94wBN1Y1MZBwSohFBY4rAxOoPqtNi0OxZiM69CUiBUWXZiwyc2r1sONsX78LFR6iEWoBJCFrG4SBrNGBIkT8Vhw13L4aTnMhi3O5b6DghQdRaiYpEg+eYXuIrLc5XntHk1sfIo5YAAyRVnx12mqfkVnX/G5iIAzOu5lK/Ko5QDAiRXfKyhME2Km4W4a9ldG1nz3X0e4EHeQShyDghQdRYqME2Nk5fNPl1DG1mkHRCg6ix0+ZF2bWrJlQTGO0zVogrrtaSyDghQtQodEDxqP2+I09B21tdsJ2+aJuZ1Xce44aHBmd1edB0QILlifqsQ1TBxjfHawiHGT/aF6/rG0mp1UlM7ruz72p1J74CAKFShvd6tO06/nxjeva9jnM06+ZvM7sRXi0EqkvQOCIhaFUrSWWjxBfHgFORzamn+gUM2hKi87Mj+e1TWPOAk/UMsQFWEZk3a/GcPmE39AeQw6IKVYy1PAAAAAElFTkSuQmCC',
   "TRUE_ORBIT": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABFElEQVR4nO2ZvQrCMBSFzz34CoK4OguOgs/gu/goju4+S8VFEJxd1cF3iJNaoYHUxJ/T5JtK2psEzselbYBCIQqLKa5Ozt2v17vrY3x/vDyuJ6NB43id7WL89j4IcQhxLOQh556qbM7P8dnQohS8M10e3Ls6ySdAiGMhHSaVKm1xNXXNmvcgnwAhjsXEF1L7sljAPM5T65tHPgFCnF4qbVJhtXVLF1LAPt15vAsnUpQQh+hSF/qEKm3nsZZqySdA5KaQeSIuXShXhQhxCHGI3LrQNztVFgkQXVLIWn4N/QOEOIQ45rvxDwpNA/5ayydA5HbAUSeVWpXnrG0171vnEyDEsZjimHebVGdthDj89QYKBfyWG6EdaF8ALPiYAAAAAElFTkSuQmCC',
   "ORBIT_LARPA": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABOElEQVR4nO2ZPW4CMRCF3zwo0gAlJ0gT5RrhAIhDUOQ4FBwi4gDkGEFpcgJK2IYGJpVZg7BYfna1Y/uTLI0s/8h6T9aMDWQyDyGoAVVVF2+/y/7BSJ6+H2EcwjjdOhb1bdP/uDxm96szF7+8yWeyChDGEbSAzVdpp8HkNjuZV4BIwULFQt9d3BvLqk12IoxDGKeLlkFilZQCRKy3UNHgzROiWOjUxb2xzKNUgIj1FpI9hi5W1Z9jv1yvqvyK7GTNCnN9ZI8/xK4AEdMB1ONcekeV8U1CGIeI6QDioR28uhaaHLKW3x8aUwXtYO1apQNYhEikIptey0meRXFjDmZeASKFiuxwwFHWtkEYhzCONPkMWAeEcYiUX6d3gU+KzbJMr/0PjnvyoegVIIwjdSyav1lTslAmg8f4B3AsaXEGXGghAAAAAElFTkSuQmCC',
-  "CRITICAL_HIT": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABUUlEQVR4nO2YIU/DQBTH371g+AKYhmQJDNnKBUEmF4IgwZI6BLofYWZVaBJwXeUSJhYyCQjWTFUvKNKvMDvc48RdtpIe8K7vp/5p2jtxv/vfpQCCIAh/iWpqoLIsN6bnURQ1NocJBOYgMEe5GDTLMqNOVVVRfn97oXx0GFC+u39UrVoBBObsuRg0jmPSIE3TjUkbnYPOca2W05uN/QogMEe5nuDy4tzYSKdnfcpX67Xx26LbpdxbrSifDIeikN8tlNzekDYfn5VRmyD4PrxA02MXbbzaxAjMUa61mc6eVZ37Uk/TZlkUlK/nc1HIvxZaPI1Ig9HD61ZtbIRhSHk5HrdrEyO0rYWSmm1juxLvTyb03NY2+WBA70sLsVZo0VDb2Mh3UMXbTYzg60GWaG3jQpumQGAOAnOUTRudur/7fhME5iAwR8E/IJeDTBAEQYCf8QWU/3RCXG2FhgAAAABJRU5ErkJggg==',
-  "HORIZONTAL_ARC": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABDElEQVR4nGNgGAWjYBSMglEwCkbBKBi5gJFUDbzxS0tg7M8Lo3uo4QheCsxkYhjigIlhJCQhhepT/2HsB61mJCc7UoACiXYN+RhgYhjigAWXRMbW7/CoXLH1QAM2NZzeLVZwg0QU4WxmbiFubOr/fn33Fcb+8+b+MRj7+9YaOPvD+7cN2Nwww5uTcVjGABPDEAeMyBzkKFt98NIaGDvUXi8ExnZU4sBqUJgGaRavuoFdfP+9HwyE3ICcnIZ8DDAxDHHASGop9GGaZyMtSyGBrO31MHaEtwPc3tFSaLACRmIUjbaFaAiYGIY4YCRVw2iPjMqAidoGjoJRMApGwSgYBaNgFIyCUTAKGIYKAABIbWIjibHx9AAAAABJRU5ErkJggg=='
+  "HORIZONTAL_ARC": 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAABDElEQVR4nGNgGAWjYBSMglEwCkbBKBi5gJFUDbzxS0tg7M8Lo3uo4QheCsxkYhjigIlhJCQhhepT/2HsB61mJCc7UoACiXYN+RhgYhjigAWXRMbW7/CoXLH1QAM2NZzeLVZwg0QU4WxmbiFubOr/fn33Fcb+8+b+MRj7+9YaOPvD+7cN2Nwww5uTcVjGABPDEAeMyBzkKFt98NIaGDvUXi8ExnZU4sBqUJgGaRavuoFdfP+9HwyE3ICcnIZ8DDAxDHHASGop9GGaZyMtSyGBrO31MHaEtwPc3tFSaLACRmIUjbaFaAiYGIY4YCRVw2iPjMqAidoGjoJRMApGwSgYBaNgFIyCUTAKGIYKAABIbWIjibHx9AAAAABJRU5ErkJggg==',
+  "STAFF_125": 'data:image/png;base64,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',
+  "STAFF_15": 'data:image/png;base64,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'
 };
 </script>
 <script>/**
- * 跃迁法术收集计算器 —— 核心算法引擎（v0.1.4）
+ * 跃迁法术收集计算器 —— 核心算法引擎（v0.1.1）
  *
  * 设计原则：
  *   1. 不依赖 DOM，可在 Node 下直接跑自检，也可被 HTML 直接引入。
  *   2. 所有游戏参数集中在 CFG，便于后续按 Wiki 答复调整。
  *   3. 数据（法术权重）由外部注入，不硬编码在引擎里。
+ *   4. 求解器输出「分区」（zones），展示与评分都从 zones 派生，避免两套口径。
  *
  * 模块：
- *   DN       一分为多链枚举（位置约束 = 迭代极限）
- *   Weights  生成权重（默认百分比口径）
- *   Phase    相位跃迁（跳跃次数、距离、载体×限制器）
- *   Score    缺失权重评分
+ *   DN          一分为多链枚举（位置约束 = 迭代极限）
+ *   Weights     生成概率（按等级出现频率归一）
+ *   Phase       相位跳跃次数与距离
+ *   Score       收集难度（k-范数）
+ *   Solve       相位跃迁求解器
+ *   Tentacle    速度触手跃迁求解器
+ *   BlackFlash  黑洞闪电弹跃迁求解器
  */
 (function (global, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -3377,36 +3312,90 @@ window.ICON_DATA = {
     PHASE: {
       jumpEvery: 12,      // 每 12 帧跳一次
       jumpDist: 28,       // 每次 28 像素
-      speedZeroAt: 90,    // > 90 份时提示「必须配加速」
-      maxPhases: 1600     // 搜索上限（实体复制所需量级）
+      speedZeroAt: 90,    // > 90 份时提示「必须配加速」（Wiki 实测约 93）
+      maxPhases: 1600     // 搜索上限
     },
-    // Dn 链：位置约束（第 i 位允许的 Dn，等价于迭代极限 D10=2 / D3,D4=3 / D2=4）
+    // Dn 链：位置约束 = 迭代极限（D10=2 / D4,D3=3 / D2=4）
     DN_POSITIONS: [[2, 3, 4, 10], [2, 3, 4, 10], [2, 3, 4], [2]],
     DN_MAX_CHAINS: 2,     // 最多两条链相加
     // 权重倍率（可调）
     TIER_MULT: { 2: 2.0, 3: 2.0, 4: 2.0, 10: 3.0 },
     // 法杖倍率 → 容量（迅捷之杖 1.25 固定 19 格，多重之杖 1.5 固定 26 格）
+    STAFFS: [
+      { key: '1', mult: 1, cap: 26, label: '一般法杖 ×1.0', icon: '' },
+      { key: '1.25', mult: 1.25, cap: 19, label: '迅捷之杖 ×1.25', icon: 'STAFF_125' },
+      { key: '1.5', mult: 1.5, cap: 26, label: '多重之杖 ×1.5', icon: 'STAFF_15' }
+    ],
     STAFF_CAP: { '1': 26, '1.25': 19, '1.5': 26 },
-    // 载荷预设
+    // 「追加*触发」系列：三者可互换，用于把被复制的多个法术打成一个组
+    TRIGGERS: ['ADD_TRIGGER', 'ADD_TIMER', 'ADD_DEATH_TRIGGER'],
+    // 载体必须搭配的触发（Wiki：黑洞 / 闪电弹 / 强烈汇聚之光 都要追加失效触发）
+    CARRIER_TRIGGER: 'ADD_DEATH_TRIGGER',
+    // 交换鹿需要非零伤害，以下修正可互换（红拳 / 蓝拳 / 线性弧 / 水平弧）
+    DAMAGE_MODS: ['DAMAGE', 'LIGHT_SHOT', 'LINE_ARC', 'HORIZONTAL_ARC'],
+    // 上/下飞对触手完全等价（触手不受方向影响，只把速度转成发射方向上的速度）
+    FLY: ['FLY_UPWARDS', 'FLY_DOWNWARDS'],
+    // 校准器用的瞄准修正
+    ARCS: ['LINE_ARC', 'HORIZONTAL_ARC'],
+    // 触手校准器用的失效触发投射物（必须能无视地形 / 从玩家身上发出）
+    CALIB_CARRIERS: ['BLACK_HOLE_DEATH_TRIGGER', 'DELAYED_SPELL'],
+    // 可选组件（不计入难度时会被忽略）
+    OPTIONAL_IDS: { NOLLA: 1 },
+    // 载荷预设（三者等价或可选）
     PAYLOADS: {
+      none: [],
       grab: ['TELEPORT_PROJECTILE_CLOSER', 'CASTER_CAST'],
       orbit: ['TELEPORT_PROJECTILE_CLOSER', 'TRUE_ORBIT', 'ORBIT_LARPA'],
       swap: ['SWAPPER_PROJECTILE', 'EXPLODING_DEER']
     },
-    // 交换鹿需要非零伤害，以下修正可互换
-    DAMAGE_MODS: ['DAMAGE', 'LIGHT_SHOT', 'LINE_ARC', 'HORIZONTAL_ARC'],
-    // 可选组件（不计入难度时会被忽略）
-    OPTIONAL_IDS: { NOLLA: 1 },
-    // 相位载体与限制器（帧数来自 Wiki）
+    // 相位载体（帧数来自 Wiki）
     PHASE_CARRIERS: [
       { id: 'SLOW_BULLET_TIMER', name: '定时能量球', kind: 'timer', frames: 100 },
       { id: 'BLACK_HOLE_DEATH_TRIGGER', name: '失效触发黑洞', kind: 'trigger', frames: 0 },
-      { id: 'MEGALASER', name: '强烈汇聚之光', kind: 'trigger', frames: 0 }
+      { id: 'MEGALASER', name: '强烈汇聚之光', kind: 'trigger', frames: 0, needTrigger: true }
     ],
     PHASE_LIMITERS: [
       { id: 'LARPA_CHAOS', name: '混沌拉帕', frames: 300 },
       { id: 'LARPA_CHAOS_2', name: '复制轨迹', frames: 200 }
-    ]
+    ],
+    // 黑洞必须飞出加载区（4 个区块 = 2048 px），否则闪电弹会撞墙
+    BH_MIN_DIST: 2048,
+    /**
+     * 显示名覆盖：Wiki 官方名不太常用时改用社区更热门的叫法。
+     * 未列出的法术仍用 name_official（缺省退回 Wiki 页面名）。
+     */
+    NAME_CN: {
+      CASTER_CAST: '内在施法',
+      TRUE_ORBIT: '行星环绕',
+      BLACK_HOLE_DEATH_TRIGGER: '定时黑洞',
+      EXPLOSIVE_PROJECTILE: '易爆',
+      LIGHT_SHOT: '轻盈一击',
+      ACCELERATING_SHOT: '逐渐加速',
+      DECELERATING_SHOT: '逐渐减速',
+      TENTACLE_TIMER: '定时触手',
+      SLOW_BULLET_TIMER: '定时能量球',
+      IF_HP: '条件-血量',
+      IF_HALF: '条件-间隔',
+      IF_END: '条件-结束',
+      GAMMA: '伽马'
+    },
+    // 「我的法术」栏里显示的速度乘数 / 时间修正（其余位置不显示）
+    SPEED_MULT: {
+      PHASING_ARC: 0.33, ACCELERATING_SHOT: 0.32, HEAVY_SHOT: 0.3,
+      EXPLOSIVE_PROJECTILE: 0.75, FIZZLE: 1.2, DECELERATING_SHOT: 1.68,
+      LIGHT_SHOT: 7.5, SPEED: 2.5, SINEWAVE: 2, CHAOTIC_ARC: 2,
+      SLIMEBALL: 1.1, FLY_UPWARDS: 1.2, FLY_DOWNWARDS: 1.2
+    },
+    TIME_DELTA: { LIFETIME: 75, ZERO_DAMAGE: 280, LIFETIME_DOWN: -42 },
+    // 面板分区
+    ROLE_CN: {
+      speed: '速度修正', damage: '伤害修正', calibrator: '校准器',
+      carrier: '跃迁载体', limit: '存在时间限制器', time: '存在时间修正',
+      payload: '载荷与返回', trigger: '追加触发', dn: '一分为多',
+      copy: '复制对象（被 Dn 复制）', aux: '其他辅助'
+    },
+    ROLE_ORDER: ['speed', 'damage', 'calibrator', 'carrier', 'limit', 'time',
+                 'payload', 'trigger', 'dn', 'copy', 'aux']
   };
 
   // ---------------------------------------------------------------- Dn 链
@@ -3456,7 +3445,7 @@ window.ICON_DATA = {
     }
 
     /**
-     * 把「需要的复制份数」拆成 ≤2 条链（可选 +1 本体）。
+     * 把「需要的复制份数」拆成 ≤maxChains 条链（可选 +1 本体）。
      * @param {number} n 目标份数（未含回绕）
      * @param {object} opt {allowBody:true, maxChains:2, limit:6}
      * @returns {Array<{chains:Array, body:boolean, total:number}>}
@@ -3525,7 +3514,7 @@ window.ICON_DATA = {
         if (v <= max) set.add(v);
         if (wrap && v * 2 <= max) set.add(v * 2);
       }
-      if (maxChains >= 0) { add(1); add(0); }               // 仅本体 / 无
+      add(1); add(0);                                        // 仅本体 / 无
       ps.forEach(function (p) { add(p); if (allowBody) add(p + 1); });
       if (maxChains >= 2) {
         for (var i = 0; i < ps.length; i++) {
@@ -3597,12 +3586,6 @@ window.ICON_DATA = {
   // ---------------------------------------------------------------- 相位
   var Phase = (function () {
     /**
-     * 相位跳跃次数
-     *   定时载体：X = 定时帧数
-     *   最大存在时间限制：X = 限制帧数 + 1
-     *   J = floor((X-1)/12)，若 (X-1)%12==0 再 -1
-     */
-    /**
      * 通用跳跃次数（含「重叠吞跳」处理）
      *   X = 计时时长；相位第 1 帧不倒计时 → 首次跳跃在第 13 帧
      *   若最后一跳恰好落在失效帧 → 该跳被吞（额外 −1 跳）
@@ -3627,7 +3610,7 @@ window.ICON_DATA = {
       return CFG.PHASE.jumpDist * phases * jumpCount;
     }
 
-    /** 枚举「载体 × 限制器」组合，返回 {carrier, limiter, X, jumps, label} */
+    /** 枚举「载体 × 限制器」组合 */
     function combos() {
       var out = [];
       CFG.PHASE_CARRIERS.forEach(function (c) {
@@ -3652,12 +3635,6 @@ window.ICON_DATA = {
 
   // ---------------------------------------------------------------- 评分
   var Score = (function () {
-    /**
-     * 收集难度（越小越好）
-     *   单法术难度 = 1 / Σ_t(该等级百分比 × 等级倍率)
-     *   方案难度   = Σ 单法术难度 × 缺口数量
-     * 权重为 0（Wiki 无生成数据）时按极大值处理。
-     */
     var NO_DATA_COST = 1e6;
     var NORM_K = 3;          // k-范数阶数（模拟显示 k=3 最贴近真实收集成本）
 
@@ -3716,14 +3693,167 @@ window.ICON_DATA = {
              tieBreak: tieBreak, byWeight: byWeight, byError: byError };
   })();
 
+  // ---------------------------------------------------------------- 分区工具
+  var Zone = (function () {
+    function make(key, label, items, opt) {
+      opt = opt || {};
+      return {
+        key: key, label: label, items: items || {},
+        optional: !!opt.optional,
+        note: opt.note || '',
+        hint: opt.hint || '',
+        staff: opt.staff || null
+      };
+    }
+
+    function add(items, id, n) {
+      items[id] = (items[id] || 0) + (n == null ? 1 : n);
+      return items;
+    }
+
+    /** 合并所有分区的法术需求 */
+    function flatten(zones) {
+      var need = {};
+      zones.forEach(function (z) {
+        Object.keys(z.items).forEach(function (id) {
+          need[id] = (need[id] || 0) + z.items[id];
+        });
+      });
+      return need;
+    }
+
+    /** 槽位总数（含可选组件，因为物理上都要占格） */
+    function slots(need) {
+      var n = 0;
+      Object.keys(need).forEach(function (k) { n += need[k]; });
+      return n;
+    }
+
+    /** 从等价候选中挑一个：优先已拥有，其次最容易获取 */
+    function pickAlt(ids, owned, guar) {
+      var best = ids[0], bestOwn = -1, bestCost = Infinity;
+      ids.forEach(function (id) {
+        var o = (guar && guar[id]) ? 99 : (owned[id] || 0);
+        var c = Score.unitCost(id);
+        if (o > bestOwn || (o === bestOwn && c < bestCost)) {
+          best = id; bestOwn = o; bestCost = c;
+        }
+      });
+      return best;
+    }
+
+    /**
+     * 在若干「整组方案」中挑最省的一组。每个方案是 {spellId: 份数}。
+     * 用于「失效触发黑洞 ≡ 追加失效触发 + 普通黑洞」这类多卡对单卡的等价关系。
+     */
+    function pickCheapest(options, owned, guar) {
+      var best = options[0], bestCost = Infinity, bestSlots = Infinity;
+      options.forEach(function (opt) {
+        var c = 0, n = 0;
+        Object.keys(opt).forEach(function (id) {
+          var need = opt[id];
+          n += need;
+          if (guar && guar[id]) return;
+          var lack = Math.max(0, need - (owned[id] || 0));
+          if (lack > 0) c += Score.unitCost(id) * lack;
+        });
+        if (c < bestCost - 1e-9 || (Math.abs(c - bestCost) < 1e-9 && n < bestSlots)) {
+          best = opt; bestCost = c; bestSlots = n;
+        }
+      });
+      return best;
+    }
+
+    /**
+     * 加「一个失效触发的黑洞」。
+     * Wiki：失效触发黑洞在效果上完全等同于「追加失效触发 + 普通黑洞」，两者按获取难度择优。
+     */
+    function addDeathTrigger(items, owned, guar) {
+      var opt = pickCheapest([
+        { BLACK_HOLE_DEATH_TRIGGER: 1 },
+        { ADD_DEATH_TRIGGER: 1, BLACK_HOLE: 1 }
+      ], owned, guar);
+      Object.keys(opt).forEach(function (id) { add(items, id, opt[id]); });
+      return opt;
+    }
+
+    /** 加「一个可作为校准器的失效触发投射物」 */
+    function addCalibCarrier(items, owned, guar) {
+      var opt = pickCheapest([
+        { BLACK_HOLE_DEATH_TRIGGER: 1 },
+        { ADD_DEATH_TRIGGER: 1, BLACK_HOLE: 1 },
+        { DELAYED_SPELL: 1 }
+      ], owned, guar);
+      Object.keys(opt).forEach(function (id) { add(items, id, opt[id]); });
+      return opt;
+    }
+
+    return { make: make, add: add, flatten: flatten, slots: slots, pickAlt: pickAlt,
+             pickCheapest: pickCheapest, addDeathTrigger: addDeathTrigger,
+             addCalibCarrier: addCalibCarrier };
+  })();
+
+  // ---------------------------------------------------------------- 复制链
+  var Chain = (function () {
+    /**
+     * 复制链的辅助法术需求
+     *   「追加*触发」的作用：把被复制的多个法术打成一个组（Dn 只复制紧跟其后的一个法术）。
+     *   - 单链 + 只复制 1 个法术 → Dn 直接复制该法术，不需要追加触发
+     *   - 单链 + 复制多个法术   → 需要 1 个追加触发把它们归组
+     *   - 两条链               → 每条链各需要 1 个追加触发
+     *   刷新环：需要两条链时必须；需要回绕时必须。
+     */
+    function extras(chains, copiedSpells, wrap) {
+      var n = chains.length;
+      var triggers = 0;
+      if (n >= 2) triggers = 2;
+      else if (n === 1 && copiedSpells >= 2) triggers = 1;
+      return {
+        triggers: triggers,
+        reset: (n >= 2) || !!wrap,
+        resetReason: (n >= 2 && wrap) ? '两条链 + 回绕'
+                   : (n >= 2 ? '需要两条复制链' : (wrap ? '需要回绕' : ''))
+      };
+    }
+
+    /**
+     * 复制链行的提示语
+     *   禁抽：Dn 复制修正时会过量抽取（从第 2 份复制起每份抽一次），靠 Dn 的摆放顺序实现禁抽。
+     *   刷新环：两条链 或 回绕时必须；在法杖末端放刷新环配合条件法术也能规避多数过量抽取。
+     */
+    function hint(dec, ex) {
+      var parts = [];
+      if (dec && dec.chains.length) parts.push('Dn 链需禁抽（靠 Dn 的摆放顺序实现）');
+      if (ex && ex.reset) parts.push('含刷新环：' + ex.resetReason);
+      return parts.join('；');
+    }
+
+    /** Dn 链文本：D3 → D3 → D2 ⇒ 共 18 份 */
+    function note(dec, unit) {
+      if (!dec) return '';
+      var chains = dec.chains.map(function (c) { return 'D' + c.digits.join('→D'); });
+      var body = dec.body ? ' + 本体' : '';
+      var txt = (chains.length ? chains.join(' ＋ ') : '无链') + body +
+                ' ⇒ 共 ' + dec.total + ' ' + unit;
+      if (dec.chains.length && !dec.body) txt += '（不含本体）';
+      return txt;
+    }
+
+    return { extras: extras, note: note, hint: hint };
+  })();
+
   // ---------------------------------------------------------------- 求解器
   var Solve = (function () {
     var _decCache = new Map();
 
     function decomposeCached(n, opt) {
-      var key = n + '|' + (opt.allowBody !== false ? 1 : 0);
+      var key = n + '|' + (opt.allowBody !== false ? 1 : 0) + '|' + (opt.maxChains || 2);
       if (!_decCache.has(key)) {
-        _decCache.set(key, DN.decompose(n, { allowBody: opt.allowBody !== false, limit: 4 }));
+        _decCache.set(key, DN.decompose(n, {
+          allowBody: opt.allowBody !== false,
+          maxChains: opt.maxChains || 2,
+          limit: 4
+        }));
       }
       return _decCache.get(key);
     }
@@ -3744,8 +3874,8 @@ window.ICON_DATA = {
      * 相位页求解
      * 注意：Dn 链复制的是「效果」，不是实体。
      *   需要的相位弧度实体恒为 1 个（本体），DN 法术按链上位置各 1 个。
-     * @param {object} opt {distance, tolerance, wrap, allowBody, maxPhases,
-     *                      owned, guaranteed, payload, calibrator, speedBalance}
+     * @param {object} opt {distance, tolerance, wrap, multiChain, allowBody, maxPhases,
+     *                      owned, guaranteed, payload, calibrator, ignoreOptional}
      */
     function phase(opt) {
       opt = opt || {};
@@ -3753,49 +3883,100 @@ window.ICON_DATA = {
       var tol = opt.tolerance || 0;
       var wrap = !!opt.wrap;
       var allowBody = opt.allowBody !== false;
+      var maxChains = opt.multiChain ? 2 : 1;
       var maxP = opt.maxPhases || CFG.PHASE.maxPhases;
       var owned = opt.owned || {};
       var guar = opt.guaranteed || {};
-      var payload = opt.payload || ['TELEPORT_PROJECTILE_CLOSER', 'CASTER_CAST'];
+      var payload = opt.payload || [];
+      var swap = payload.indexOf('SWAPPER_PROJECTILE') >= 0;
       var out = [];
 
       var combos = Phase.combos();
-      var reach = Array.from(DN.reachable(maxP, { allowBody: allowBody, wrap: false }))
+      var reach = Array.from(DN.reachable(maxP, { allowBody: allowBody, maxChains: maxChains, wrap: false }))
         .sort(function (a, b) { return a - b; });
 
-      combos.forEach(function (cb) {
+      // 交换鹿只能配「追加失效触发」类载体（定时载体是追加定时触发，不行）
+      var usable = combos.filter(function (cb) {
+        if (!swap) return true;
+        return cb.carrier.kind === 'trigger';
+      });
+
+      usable.forEach(function (cb) {
         reach.forEach(function (pPhys) {
           var pEff = wrap ? pPhys * 2 : pPhys;
           var dist = Phase.distance(pEff, cb.jumps);
           var err = Math.abs(dist - D);
           if (err > tol) return;
-          var decs = decomposeCached(pPhys, { allowBody: allowBody });
+          var decs = decomposeCached(pPhys, { allowBody: allowBody, maxChains: maxChains });
           if (!decs.length) return;
 
           decs.forEach(function (dec) {
-            var need = {};
-            need[cb.carrier.id] = 1;
-            if (cb.limiter) need[cb.limiter.id] = 1;
-            need.PHASING_ARC = 1;                       // 本体只占 1 个槽位
+            var zones = [];
+            var ex = Chain.extras(dec.chains, 1, wrap);
+
+            // ---- 复制链
+            var copyItems = {};
             var dn = dnNeed(dec.chains);
-            Object.keys(dn).forEach(function (k) { need[k] = (need[k] || 0) + dn[k]; });
-            payload.forEach(function (id) { need[id] = (need[id] || 0) + 1; });
-            if (opt.speedBalance !== false && pEff > CFG.PHASE.speedZeroAt) {
-              need.SPEED = (need.SPEED || 0) + 1;
+            Object.keys(dn).forEach(function (k) { Zone.add(copyItems, k, dn[k]); });
+            Zone.add(copyItems, 'PHASING_ARC', 1);
+            for (var ti = 0; ti < ex.triggers; ti++) {
+              Zone.add(copyItems, Zone.pickAlt(CFG.TRIGGERS, owned, guar), 1);
             }
+            if (ex.reset) Zone.add(copyItems, 'RESET', 1);
+            zones.push(Zone.make('copy', '复制链', copyItems, {
+              note: Chain.note(dec, '份相位') +
+                    (dec.chains.length && !dec.body ? '；本体需用条件法术弃掉' : ''),
+              hint: Chain.hint(dec, ex),
+              wrap: wrap
+            }));
+
+            // ---- 额外速度乘数（相位堆太多会把速度乘数压到 0）
+            var speedItems = {};
+            if (pEff > CFG.PHASE.speedZeroAt) Zone.add(speedItems, 'SPEED', 1);
+            if (Object.keys(speedItems).length) {
+              zones.push(Zone.make('speed', '额外速度乘数', speedItems, {
+                note: pEff > CFG.PHASE.speedZeroAt
+                  ? '相位 ' + pEff + ' 份会把速度乘数压到接近 0，必须配加速平衡' : ''
+              }));
+            }
+
+            // ---- 必需组件（载体 + 限制器）
+            var reqItems = {};
+            if (cb.carrier.id === 'BLACK_HOLE_DEATH_TRIGGER') {
+              Zone.addDeathTrigger(reqItems, owned, guar);
+            } else {
+              Zone.add(reqItems, cb.carrier.id, 1);
+              if (cb.carrier.needTrigger) Zone.add(reqItems, CFG.CARRIER_TRIGGER, 1);
+            }
+            if (cb.limiter) Zone.add(reqItems, cb.limiter.id, 1);
+            if (dec.chains.length && !dec.body) Zone.add(reqItems, 'IF_HP', 1);
+            zones.push(Zone.make('req', '必需组件', reqItems, {
+              note: (dec.chains.length && !dec.body) ? '条件-血量用来弃掉修正本体' : ''
+            }));
+
+            // ---- 载荷（必需：用户可选类型，但选哪种都必需）
+            if (payload.length) {
+              var payItems = {};
+              payload.forEach(function (id) { Zone.add(payItems, id, 1); });
+              zones.push(Zone.make('payload', '载荷', payItems));
+            }
+
+            // ---- 可选组件（校准器 + 零时）
+            var optItems = {};
             if (opt.calibrator) {
-              ['LINE_ARC', 'BURST_3', 'NOLLA'].forEach(function (id) {
-                need[id] = (need[id] || 0) + 1;
-              });
+              Zone.add(optItems, Zone.pickAlt(CFG.ARCS, owned, guar), 1);
+              Zone.add(optItems, 'NOLLA', 1);
             }
-            if (overMaxPerSpell(need, opt.maxPerSpell)) return;
-            var score = Score.missingCost(need, owned, guar, opt);
-            var slots = Object.keys(need).reduce(function (s, k) { return s + need[k]; }, 0);
-            out.push({
+            if (Object.keys(optItems).length) {
+              zones.push(Zone.make('optional', '可选组件', optItems, {
+                optional: true, note: '校准器（瞄准用，可手动瞄准省掉）'
+              }));
+            }
+
+            pushSolution(out, {
               page: 'phase', combo: cb, pPhys: pPhys, pEff: pEff,
-              dist: dist, error: err, dec: dec, need: need,
-              slots: slots, overCapacity: slots > (opt.capacity || 26),
-              score: score
+              dist: dist, error: err, dec: dec, zones: zones,
+              wrap: wrap, opt: opt, owned: owned, guar: guar
             });
           });
         });
@@ -3814,8 +3995,23 @@ window.ICON_DATA = {
       return uniq;
     }
 
-    return { phase: phase, dnNeed: dnNeed };
+    return { phase: phase, dnNeed: dnNeed, decomposeCached: decomposeCached };
   })();
+
+  /** 统一收尾：合并 need、评分、槽位、超容 */
+  function pushSolution(out, s) {
+    var need = Zone.flatten(s.zones);
+    if (overMaxPerSpell(need, s.opt.maxPerSpell)) return;
+    var score = Score.missingCost(need, s.owned, s.guar, s.opt);
+    var slots = Zone.slots(need);
+    var cap = s.staff ? s.staff.cap : 26;
+    s.need = need;
+    s.score = score;
+    s.slots = slots;
+    s.staffCap = cap;
+    s.overCapacity = slots > cap;
+    out.push(s);
+  }
 
   // ---------------------------------------------------------------- 触手页
   var Tentacle = (function () {
@@ -3834,8 +4030,7 @@ window.ICON_DATA = {
       { id: 'SINEWAVE', v: 2, name: '蛇行' },
       { id: 'CHAOTIC_ARC', v: 2, name: '混乱之路' }
     ];
-    var STAFFS = [1, 1.25, 1.5];
-    var _pool = null;
+    var _poolCache = {};
 
     function clampStep(x, f) {
       var v = x * f;
@@ -3844,9 +4039,13 @@ window.ICON_DATA = {
       return v;
     }
 
-    function alphaChain(staff, slime, cnt) {
+    /**
+     * α 链
+     * @param {number} staffMult 法杖速度倍率；用校准器时传 1（校准器会规避法杖的隐藏倍率）
+     */
+    function alphaChain(staffMult, slime, cnt) {
       var x = 1;
-      if (staff !== 1) x = clampStep(x, staff);
+      if (staffMult && staffMult !== 1) x = clampStep(x, staffMult);
       if (slime) x = clampStep(x, 1.1);
       for (var i = 0; i < SPEED.length; i++) {
         for (var r = 0; r < (cnt[i] || 0); r++) x = clampStep(x, SPEED[i].v);
@@ -3854,14 +4053,21 @@ window.ICON_DATA = {
       return x;
     }
 
-    /** 预计算所有速度修正组合（总个数 ≤ maxMods），按 α 升序 */
-    function pool(maxMods) {
-      if (_pool && _pool.maxMods === maxMods) return _pool.list;
+    /**
+     * 预计算所有速度修正组合（总个数 ≤ maxMods），按 α 升序
+     * @param {number} maxMods
+     * @param {boolean} calibrator 用校准器时法杖倍率不参与（两者至多一个）
+     * @param {Array<number>} staffMults 允许的法杖倍率
+     */
+    function pool(maxMods, calibrator, staffMults) {
+      var mults = calibrator ? [1] : (staffMults || [1, 1.25, 1.5]);
+      var ck = maxMods + '|' + calibrator + '|' + mults.join(',');
+      if (_poolCache[ck]) return _poolCache[ck];
       var list = [];
       var cnt = new Array(SPEED.length).fill(0);
       (function walk(idx, left) {
         if (idx === SPEED.length) {
-          STAFFS.forEach(function (st) {
+          mults.forEach(function (st) {
             [false, true].forEach(function (sl) {
               if (st === 1 && !sl && cnt.every(function (c) { return c === 0; })) {
                 list.push({ alpha: 1, cnt: cnt.slice(), staff: 1, slime: false, mods: 0 });
@@ -3881,13 +4087,21 @@ window.ICON_DATA = {
         cnt[idx] = 0;
       })(0, maxMods);
       list.sort(function (a, b) { return a.alpha - b.alpha; });
-      _pool = { maxMods: maxMods, list: list };
+      _poolCache[ck] = list;
       return list;
+    }
+
+    function staffOf(mult) {
+      for (var i = 0; i < CFG.STAFFS.length; i++) {
+        if (CFG.STAFFS[i].mult === mult) return CFG.STAFFS[i];
+      }
+      return CFG.STAFFS[0];
     }
 
     /**
      * 触手页求解
-     *   d = 7.92 × 1.2^n × α_other（α_other ≤ 20）
+     *   d = 7.92 × 1.2^n × α
+     *   上/下飞对触手完全等价（触手不受方向影响）
      */
     function solve(opt) {
       opt = opt || {};
@@ -3896,19 +4110,21 @@ window.ICON_DATA = {
       var Nmax = opt.maxUpDown != null ? opt.maxUpDown : 100;
       var maxMods = opt.maxSpeedMods != null ? opt.maxSpeedMods : 5;
       var wrap = !!opt.wrap;
+      var calibrator = !!opt.calibrator;
       var owned = opt.owned || {};
       var guar = opt.guaranteed || {};
-      var payload = opt.payload || ['TELEPORT_PROJECTILE_CLOSER', 'CASTER_CAST'];
-      var flyId = opt.flyUp ? 'FLY_UPWARDS' : 'FLY_DOWNWARDS';
+      var payload = opt.payload || [];
+      var maxChains = opt.multiChain ? 2 : 1;
+      var flyId = Zone.pickAlt(CFG.FLY, owned, guar);
       var out = [];
 
-      var list = pool(maxMods);
+      var list = pool(maxMods, calibrator, opt.staffMults);
       var LN12 = Math.log(FLY_V);
 
       // 以 α 为主轴：对每个 α 反解 n，避免「n 取整数导致 α 无解」
       for (var pi = 0; pi < list.length; pi++) {
         var p = list[pi];
-        var ideal = Math.log(D / (V1 * p.alpha)) / LN12;   // 理想 1.2 指数
+        var ideal = Math.log(D / (V1 * p.alpha)) / LN12;
         if (!isFinite(ideal) || ideal < -0.5) continue;
 
         var cands;
@@ -3933,42 +4149,85 @@ window.ICON_DATA = {
           if (err > tol) continue;
 
           var decs = (nPhys > 0)
-            ? DN.decompose(nPhys, { allowBody: opt.allowBody !== false, limit: 2 })
+            ? Solve.decomposeCached(nPhys, { allowBody: opt.allowBody !== false, maxChains: maxChains })
             : [{ chains: [], body: false, total: 0 }];
           if (!decs.length) continue;
 
           for (var di = 0; di < decs.length; di++) {
             var dec = decs[di];
-            var need = { TENTACLE_TIMER: 1 };
-            if (nPhys > 0) need[flyId] = 1;          // 本体只占 1 槽
-            var dn = dnNeedOf(dec.chains);
-            Object.keys(dn).forEach(function (k2) { need[k2] = (need[k2] || 0) + dn[k2]; });
-            for (var si = 0; si < SPEED.length; si++) {
-              if (p.cnt[si]) need[SPEED[si].id] = (need[SPEED[si].id] || 0) + p.cnt[si];
-            }
-            if (p.slime) need.SLIMEBALL = 1;
-            for (var qi = 0; qi < payload.length; qi++) {
-              need[payload[qi]] = (need[payload[qi]] || 0) + 1;
-            }
-            if (opt.calibrator) {
-              ['LINE_ARC', 'NOLLA', 'BLACK_HOLE_DEATH_TRIGGER'].forEach(function (id) {
-                need[id] = (need[id] || 0) + 1;
-              });
-            }
-            if (opt.reset) need.RESET = (need.RESET || 0) + 1;
+            var zones = [];
+            var ex = Chain.extras(dec.chains, 1, wrap);
 
-            if (overMaxPerSpell(need, opt.maxPerSpell)) continue;
-            var score = Score.missingCost(need, owned, guar, opt);
-            var slots = 0;
-            Object.keys(need).forEach(function (k3) { slots += need[k3]; });
-            out.push({
+            // ---- 复制链
+            var copyItems = {};
+            var dn = Solve.dnNeed(dec.chains);
+            Object.keys(dn).forEach(function (k2) { Zone.add(copyItems, k2, dn[k2]); });
+            if (nPhys > 0) Zone.add(copyItems, flyId, 1);
+            for (var ti = 0; ti < ex.triggers; ti++) {
+              Zone.add(copyItems, Zone.pickAlt(CFG.TRIGGERS, owned, guar), 1);
+            }
+            if (ex.reset) Zone.add(copyItems, 'RESET', 1);
+            zones.push(Zone.make('copy', '复制链', copyItems, {
+              note: Chain.note(dec, '份上/下飞') +
+                    (dec.chains.length && !dec.body ? '；本体需用条件法术弃掉' : ''),
+              hint: Chain.hint(dec, ex)
+            }));
+
+            // ---- 额外速度乘数
+            var speedItems = {};
+            for (var si = 0; si < SPEED.length; si++) {
+              if (p.cnt[si]) Zone.add(speedItems, SPEED[si].id, p.cnt[si]);
+            }
+            if (p.slime) Zone.add(speedItems, 'SLIMEBALL', 1);
+            if (Object.keys(speedItems).length) {
+              zones.push(Zone.make('speed', '额外速度乘数', speedItems));
+            }
+
+            // ---- 必需组件（载体 + 回绕用的条件法术）
+            var reqItems = {};
+            Zone.add(reqItems, 'TENTACLE_TIMER', 1);
+            if (dec.chains.length && !dec.body) Zone.add(reqItems, 'IF_HP', 1);
+            if (wrap) {
+              Zone.add(reqItems, 'IF_HALF', 1);
+              Zone.add(reqItems, 'IF_END', 1);
+            }
+            var reqNote = [];
+            if (dec.chains.length && !dec.body) reqNote.push('条件-血量用来弃掉修正本体');
+            if (wrap) reqNote.push('条件-间隔 / 条件-结束让校准器与速度修正只释放一次');
+            zones.push(Zone.make('req', '必需组件', reqItems, {
+              note: reqNote.join('；')
+            }));
+
+            // ---- 载荷（必需：用户可选类型，但选哪种都必需）
+            if (payload.length) {
+              var payItems = {};
+              payload.forEach(function (id) { Zone.add(payItems, id, 1); });
+              zones.push(Zone.make('payload', '载荷', payItems));
+            }
+
+            // ---- 可选组件（校准器 + 零时）
+            var optItems = {};
+            if (calibrator) {
+              Zone.addCalibCarrier(optItems, owned, guar);
+              Zone.add(optItems, Zone.pickAlt(CFG.ARCS, owned, guar), 1);
+              Zone.add(optItems, 'NOLLA', 1);
+            }
+            if (Object.keys(optItems).length) {
+              zones.push(Zone.make('optional', '可选组件', optItems, {
+                optional: true,
+                note: '校准器：失效触发投射物 + 瞄准修正（让触手继承方向，并规避法杖隐藏倍率）'
+              }));
+            }
+
+            var sol = {
               page: 'tentacle', nPhys: nPhys, nEff: nEff, alpha: p.alpha,
-              staff: p.staff, slime: p.slime, cnt: p.cnt.slice(),
-              dist: d, error: err, dec: dec, need: need, slots: slots,
-              overCapacity: slots > (CFG.STAFF_CAP[String(p.staff)] || opt.capacity || 26),
-              staffCap: CFG.STAFF_CAP[String(p.staff)] || opt.capacity || 26,
-              score: score
-            });
+              staffMult: p.staff, staff: calibrator ? null : staffOf(p.staff),
+              slime: p.slime, cnt: p.cnt.slice(),
+              dist: d, error: err, dec: dec, zones: zones,
+              calibrator: calibrator, wrap: wrap, opt: opt,
+              owned: owned, guar: guar
+            };
+            pushSolution(out, sol);
           }
         }
       }
@@ -3978,7 +4237,8 @@ window.ICON_DATA = {
       return uniq.slice(0, opt.limit || 2000);
     }
 
-    return { solve: solve, pool: pool, alphaChain: alphaChain, SPEED: SPEED, V1: V1 };
+    return { solve: solve, pool: pool, alphaChain: alphaChain,
+             SPEED: SPEED, V1: V1, staffOf: staffOf };
   })();
 
   // ---------------------------------------------------------------- 黑闪页
@@ -4085,6 +4345,7 @@ window.ICON_DATA = {
 
     /**
      * 黑闪页求解：黑洞 + 闪电弹 双载体，距离之和逼近目标
+     *   两者都必须搭配「追加失效触发」才能作为载体 / 释放载荷。
      */
     function solve(opt) {
       opt = opt || {};
@@ -4092,7 +4353,8 @@ window.ICON_DATA = {
       var tol = opt.tolerance || 0;
       var owned = opt.owned || {};
       var guar = opt.guaranteed || {};
-      var payload = opt.payload || ['SWAPPER_PROJECTILE', 'EXPLODING_DEER', 'DAMAGE'];
+      var payload = opt.payload || [];
+      var bhMin = opt.bhMinDist != null ? opt.bhMinDist : CFG.BH_MIN_DIST;
       var out = [];
 
       var bh = enumCarrier(CARRIERS.bh, opt);
@@ -4102,7 +4364,9 @@ window.ICON_DATA = {
       var cap = opt.limit || 3000;
       for (var i = 0; i < bh.length; i++) {
         var a = bh[i];
+        if (bhMin && a.d < bhMin) continue;          // 黑洞必须飞出加载区
         var need = D - a.d;
+        if (need < 0) break;
         var lo = lowerBound(ltD, need - tol);
         for (var j = lo; j < lt.length && ltD[j] <= need + tol; j++) {
           var b = lt[j];
@@ -4110,34 +4374,46 @@ window.ICON_DATA = {
           var err = Math.abs(total - D);
           if (err > tol) continue;
 
-          var nd = {};
-          nd[a.carrier.id] = 1;
-          nd[b.carrier.id] = (nd[b.carrier.id] || 0) + 1;
-          SPEED.forEach(function (f, k) {
-            if (a.cnt[k]) nd[f.id] = (nd[f.id] || 0) + a.cnt[k];
-            if (b.cnt[k]) nd[f.id] = (nd[f.id] || 0) + b.cnt[k];
-          });
-          TIME.forEach(function (f, k) {
-            var ai = SPEED.length + k, bi = SPEED.length + k;
-            if (a.cnt[ai]) nd[f.id] = (nd[f.id] || 0) + a.cnt[ai];
-            if (b.cnt[bi]) nd[f.id] = (nd[f.id] || 0) + b.cnt[bi];
-          });
-          if (a.slime) nd.SLIMEBALL = (nd.SLIMEBALL || 0) + 1;
-          if (b.slime) nd.SLIMEBALL = (nd.SLIMEBALL || 0) + 1;
-          payload.forEach(function (id) { nd[id] = (nd[id] || 0) + 1; });
+          // ---- 黑洞部分
+          var bhItems = {};
+          Zone.add(bhItems, CARRIERS.bh.id, 1);
+          Zone.add(bhItems, CFG.CARRIER_TRIGGER, 1);
+          SPEED.forEach(function (f, k) { if (a.cnt[k]) Zone.add(bhItems, f.id, a.cnt[k]); });
+          TIME.forEach(function (f, k) { if (a.cnt[SPEED.length + k]) Zone.add(bhItems, f.id, a.cnt[SPEED.length + k]); });
+          if (a.slime) Zone.add(bhItems, 'SLIMEBALL', 1);
 
-          if (overMaxPerSpell(nd, opt.maxPerSpell)) continue;
-          var score = Score.missingCost(nd, owned, guar, opt);
-          var slots = Object.keys(nd).reduce(function (s, k) { return s + nd[k]; }, 0);
+          // ---- 闪电弹部分
+          var ltItems = {};
+          Zone.add(ltItems, CARRIERS.lt.id, 1);
+          Zone.add(ltItems, CFG.CARRIER_TRIGGER, 1);
+          SPEED.forEach(function (f, k) { if (b.cnt[k]) Zone.add(ltItems, f.id, b.cnt[k]); });
+          TIME.forEach(function (f, k) { if (b.cnt[SPEED.length + k]) Zone.add(ltItems, f.id, b.cnt[SPEED.length + k]); });
+          if (b.slime) Zone.add(ltItems, 'SLIMEBALL', 1);
+
+          var zones = [
+            Zone.make('bh', '必需 · 黑洞修正', bhItems,
+              { note: '黑洞先把载荷送出加载区（≥ ' + CFG.BH_MIN_DIST + ' px）' }),
+            Zone.make('lt', '必需 · 闪电弹修正', ltItems,
+              { note: '闪电弹接力飞完剩下的距离并释放载荷' })
+          ];
+
+          // ---- 载荷（必需：用户可选类型，但选哪种都必需）
+          if (payload.length) {
+            var pItems = {};
+            payload.forEach(function (id) { Zone.add(pItems, id, 1); });
+            zones.push(Zone.make('payload', '载荷', pItems));
+          }
+
           // 黑洞存在时间随机（±tvar 帧）导致的距离区间
           var rLo = total, rHi = total;
           if (a.dLo != null) { rLo = a.dLo + b.d; rHi = a.dHi + b.d; }
-          out.push({
+          var sol = {
             page: 'blackflash', bh: a, lt: b, dist: total, error: err,
             rangeLo: rLo, rangeHi: rHi,
-            need: nd, slots: slots, overCapacity: slots > (opt.capacity || 26),
-            score: score
-          });
+            staffMult: a.staff, staff: Tentacle.staffOf(a.staff),
+            zones: zones, opt: opt, owned: owned, guar: guar
+          };
+          pushSolution(out, sol);
           if (out.length >= cap * 4) break;
         }
       }
@@ -4156,84 +4432,35 @@ window.ICON_DATA = {
 
   // ---------------------------------------------------------------- 结果格式化
   var Format = (function () {
-    var SPEED_IDS = ['LIGHT_SHOT', 'SPEED', 'SINEWAVE', 'CHAOTIC_ARC', 'DECELERATING_SHOT',
-                     'FIZZLE', 'EXPLOSIVE_PROJECTILE', 'PHASING_ARC', 'ACCELERATING_SHOT',
-                     'HEAVY_SHOT', 'SLIMEBALL'];
-    var TIME_IDS = ['LIFETIME', 'ZERO_DAMAGE', 'LIFETIME_DOWN'];
-
     function isDn(id) { return /^DIVIDE_\d+$/.test(id); }
 
-    /**
-     * 三块分组：复制链 / 速度与回绕 / 其他组件
-     * @param {object} sol 求解结果
-     * @param {object} owned 已有份数
-     * @param {object} guar 常备表
-     */
+    /** 分区 → 带缺口信息的条目 */
     function blocks(sol, owned, guar) {
       owned = owned || {}; guar = guar || {};
-      var need = sol.need;
-      var copy = [], speed = [], other = [], optional = [];
-
-      Object.keys(need).forEach(function (id) {
-        var n = need[id];
-        var o = guar[id] ? n : (owned[id] || 0);
-        var lack = Math.max(0, n - o);
-        var item = { id: id, need: n, owned: o, lack: lack, noName: true,
-                     optional: !!CFG.OPTIONAL_IDS[id],
-                     label: lack > 0 ? ('缺 ' + lack + '（有 ' + o + ' / 需 ' + n + '）')
-                                     : ('有 ' + o + ' / ' + n) };
-        // 复制链行：Dn 链 + 被复制的相位/上下飞 + 刷新环（回绕）
-        // 速度修正刻意不放在这一行——它们要避免被回绕
-        if (isDn(id) || id === 'PHASING_ARC' || id === 'FLY_UPWARDS' ||
-            id === 'FLY_DOWNWARDS' || id === 'RESET') {
-          copy.push(item);
-        } else if (SPEED_IDS.indexOf(id) >= 0) {
-          // 只有「提供速度乘数」的法术进这一行；时间修正归入其他组件
-          speed.push(item);
-        } else if (item.optional) {
-          optional.push(item);
-        } else {
-          other.push(item);
-        }
+      return (sol.zones || []).map(function (z) {
+        var items = Object.keys(z.items).map(function (id) {
+          var n = z.items[id];
+          var o = guar[id] ? n : (owned[id] || 0);
+          var lack = Math.max(0, n - o);
+          return {
+            id: id, need: n, owned: o, lack: lack, noName: true,
+            optional: !!z.optional || !!CFG.OPTIONAL_IDS[id],
+            label: lack > 0 ? ('缺 ' + lack + '（有 ' + o + ' / 需 ' + n + '）')
+                            : ('有 ' + o + ' / ' + n)
+          };
+        });
+        // 只把 Dn 提到最前，其余保持求解器给的顺序（载体 → 触发 → 限制器 → 修正）
+        items.sort(function (a, b) {
+          if (isDn(a.id) !== isDn(b.id)) return isDn(a.id) ? -1 : 1;
+          return 0;
+        });
+        return { key: z.key, label: z.label, items: items,
+                 note: z.note, hint: z.hint, optional: z.optional,
+                 staff: z.staff };
       });
-
-      // 复制链行内顺序：Dn 链 → 被复制的相位/上下飞 → 刷新环
-      copy.sort(function (a, b) {
-        function rank(it) {
-          if (isDn(it.id)) return 0;
-          if (it.id === 'RESET') return 2;
-          return 1;
-        }
-        var d = rank(a) - rank(b);
-        if (d !== 0) return d;
-        return a.id < b.id ? -1 : (a.id > b.id ? 1 : 0);
-      });
-
-      var blocks = [];
-      if (copy.length) {
-        blocks.push({ key: 'copy', label: '复制链 + 回绕', items: copy,
-                      note: chainNote(sol),
-                      hint: (sol.dec && sol.dec.chains.length) ? 'Dn 链可能需要禁抽' : '' });
-      }
-      if (speed.length) blocks.push({ key: 'speed', label: '额外速度乘数', items: speed });
-      if (other.length) blocks.push({ key: 'other', label: '必须组件', items: other });
-      if (optional.length) blocks.push({ key: 'optional', label: '可选组件', items: optional });
-      return blocks;
     }
 
-    /** 「D10 → D4 → D2 ⇒ 共 80 份相位」 */
-    function chainNote(sol) {
-      if (!sol.dec) return '';
-      var chains = sol.dec.chains.map(function (c) {
-        return 'D' + c.digits.join('→D');
-      });
-      var body = sol.dec.body ? ' + 本体' : '';
-      var unit = sol.page === 'phase' ? '份相位' : '份上/下飞';
-      return (chains.length ? chains.join(' + ') : '无链') + body +
-             ' ⇒ 共 ' + sol.dec.total + ' ' + unit;
-    }
-
-    return { blocks: blocks, chainNote: chainNote, isDn: isDn };
+    return { blocks: blocks, isDn: isDn };
   })();
 
   // ---------------------------------------------------------------- 工具
@@ -4255,14 +4482,6 @@ window.ICON_DATA = {
     return false;
   }
 
-  function dnNeedOf(chains) {
-    var need = {};
-    chains.forEach(function (c) {
-      c.digits.forEach(function (d) { need['DIVIDE_' + d] = (need['DIVIDE_' + d] || 0) + 1; });
-    });
-    return need;
-  }
-
   function dedupe(list, keyFn) {
     var seen = new Set(), out = [];
     list.forEach(function (s) {
@@ -4274,7 +4493,8 @@ window.ICON_DATA = {
   }
 
   return { CFG: CFG, DN: DN, Weights: Weights, Phase: Phase, Score: Score,
-           Solve: Solve, Tentacle: Tentacle, BlackFlash: BlackFlash, Format: Format };
+           Zone: Zone, Chain: Chain, Solve: Solve, Tentacle: Tentacle,
+           BlackFlash: BlackFlash, Format: Format };
 });
 </script>
 <script>/* 跃迁法术收集计算器 —— 界面逻辑（依赖 window.SPELL_DATA / ICON_DATA / LDT） */
@@ -4289,12 +4509,14 @@ window.ICON_DATA = {
     if (s.guaranteed) guar[s.id] = 1;
   });
 
-  var ROLE_CN = {
-    speed: '速度修正', time: '存在时间修正', updown: '上 / 下飞',
-    carrier: '跃迁载体', limit: '存在时间限制器', payload: '载荷与返回',
-    aux: '校准器与辅助', dn: '一分为多（Dn）', copy: '复制'
+  var ROLE_CN = LDT.CFG.ROLE_CN;
+  var ROLE_ORDER = LDT.CFG.ROLE_ORDER;
+
+  // 页面专属致谢（HTML）
+  var PAGE_CREDIT = {
+    tentacle: '项目思路对本工具帮助显著：<b>机・丹尼尔・奥利瓦</b>',
+    blackflash: '黑洞闪电弹跃迁的技术支持：<b>UBK</b>'
   };
-  var ROLE_ORDER = ['speed', 'time', 'updown', 'carrier', 'limit', 'payload', 'aux', 'dn', 'copy'];
 
   var owned = {};
   var state = { page: 'tentacle', sols: [], pageIdx: 0, pageSize: 50 };
@@ -4309,12 +4531,13 @@ window.ICON_DATA = {
   }
   function iconUrl(id) { return (window.ICON_DATA || {})[id] || ''; }
 
-  /** 显示名：优先取 note 的第一段，其次 Wiki 页面名，最后用 ID */
+  /** 显示名：常用名覆盖表 → Wiki 官方中文名 → Wiki 页面名 → ID */
   function dispName(id) {
+    var over = LDT.CFG.NAME_CN[id];
+    if (over) return over;
     var s = byId[id];
     if (!s) return id;
-    var n = (s.note || '').split(/[（(：:×]/)[0].trim();
-    return n || s.wiki_page || id;
+    return (s.name_official || '').trim() || s.wiki_page || id;
   }
 
   /** 交换鹿需要非零伤害：优先用已有的，否则用最容易获取的 */
@@ -4336,28 +4559,52 @@ window.ICON_DATA = {
     return v === 'custom' ? Math.max(1, +$('#customDist').value || 35840) : +v;
   }
 
+  function payloadOf(sel) {
+    var mode = $(sel).value;
+    if (mode === 'none') return [];
+    var set = LDT.CFG.PAYLOADS[mode] || [];
+    return mode === 'swap' ? set.concat([pickDamageMod()]) : set.slice();
+  }
+
+  function staffMultsOf(sel) {
+    var v = $(sel).value;
+    return v === 'any' ? [1, 1.25, 1.5] : [parseFloat(v)];
+  }
+
   /* ------------------------------------------------------------ 法术面板 */
+  var rowsById = {};       // id -> [row, ...]（同一法术可出现在多个分区）
+
+  function rolesOf(s) {
+    return (s.roles && s.roles.length) ? s.roles : [s.role || 'aux'];
+  }
+
   function buildPanel() {
     var wrap = $('#spellGroups');
     wrap.innerHTML = '';
+    rowsById = {};
+
     var groups = {};
     SPELLS.forEach(function (s) {
-      (groups[s.role] = groups[s.role] || []).push(s);
+      rolesOf(s).forEach(function (role) {
+        (groups[role] = groups[role] || []).push(s);
+      });
     });
 
     ROLE_ORDER.forEach(function (role) {
       var list = groups[role];
       if (!list || !list.length) return;
       var g = el('div', 'sgroup');
+      g.dataset.role = role;
       g.appendChild(el('h3', null, ROLE_CN[role] || role));
-      list.forEach(function (s) { g.appendChild(spellRow(s)); });
+      list.forEach(function (s) { g.appendChild(spellRow(s, role)); });
       wrap.appendChild(g);
     });
   }
 
-  function spellRow(s) {
+  function spellRow(s, role) {
     var row = el('label', 'sitem');
     row.dataset.id = s.id;
+    row.dataset.role = role;
     row.dataset.search = (dispName(s.id) + ' ' + s.id + ' ' + (s.wiki_page || '')).toLowerCase();
 
     var img = el('img');
@@ -4366,6 +4613,14 @@ window.ICON_DATA = {
     row.appendChild(img);
 
     row.appendChild(el('span', 'nm', dispName(s.id)));
+    // 只在「我的法术」栏显示速度乘数 / 时间修正
+    var mult = LDT.CFG.SPEED_MULT[s.id];
+    var delta = LDT.CFG.TIME_DELTA[s.id];
+    if (mult != null) {
+      row.appendChild(el('span', 'mul', '×' + mult));
+    } else if (delta != null) {
+      row.appendChild(el('span', 'mul', (delta > 0 ? '+' : '') + delta + 'f'));
+    }
     if (s.guaranteed) row.appendChild(el('span', 'tag', '常备'));
 
     var num = el('input');
@@ -4376,27 +4631,31 @@ window.ICON_DATA = {
     num.addEventListener('click', function (e) { e.stopPropagation(); });
     num.addEventListener('input', function () {
       if (owned[s.id]) owned[s.id] = Math.max(1, +num.value || 1);
-      refreshRow(row, s.id);
+      refreshAll(s.id);
     });
 
     var chk = el('input');
     chk.type = 'checkbox';
     chk.addEventListener('change', function () {
-      if (chk.checked) {
-        owned[s.id] = Math.max(1, +num.value || 1);
-      } else {
-        delete owned[s.id];
-      }
-      refreshRow(row, s.id);
+      if (chk.checked) owned[s.id] = Math.max(1, +num.value || 1);
+      else delete owned[s.id];
+      refreshAll(s.id);
     });
 
     row.appendChild(num);
     row.appendChild(chk);
     row._chk = chk; row._num = num;
+    (rowsById[s.id] = rowsById[s.id] || []).push(row);
     return row;
   }
 
-  function refreshRow(row, id) {
+  /** 同一法术的所有分区行保持同步 */
+  function refreshAll(id) {
+    (rowsById[id] || []).forEach(refreshRow);
+  }
+
+  function refreshRow(row) {
+    var id = row.dataset.id;
     var on = !!owned[id];
     row.classList.toggle('on', on);
     if (row._chk) row._chk.checked = on;
@@ -4423,7 +4682,6 @@ window.ICON_DATA = {
       distance: D,
       tolerance: tolAbs,
       maxPerSpell: Math.max(1, +$('#maxPerSpell').value || 3),
-      capacity: Math.max(1, +$('#capacity').value || 26),
       owned: owned,
       guaranteed: guar,
       sortMode: $('#sortMode').value,
@@ -4433,26 +4691,25 @@ window.ICON_DATA = {
     if (state.page === 'tentacle') {
       common.maxUpDown = Math.max(0, +$('#ttMaxUpDown').value || 0);
       common.maxSpeedMods = Math.max(0, +$('#ttMaxMods').value || 0);
-      common.flyUp = $('#ttDir').value === 'up';
       common.calibrator = $('#ttCalibrator').checked;
-      common.reset = $('#ttReset').checked;
+      common.multiChain = $('#ttMultiChain').checked;
       common.wrap = $('#ttWrap').checked;
+      common.payload = payloadOf('#ttPayload');
+      common.staffMults = common.calibrator ? [1] : staffMultsOf('#ttStaff');
       common.limit = 3000;
     } else if (state.page === 'blackflash') {
       common.maxCorrections = Math.max(0, +$('#bfMaxCorr').value || 0);
       common.maxSpeedMods = Math.max(0, +$('#bfMaxSpeed').value || 0);
-      var st = $('#bfStaff').value;
-      common.staffs = st === 'any' ? [1, 1.25, 1.5] : [parseFloat(st)];
+      common.staffs = staffMultsOf('#bfStaff');
+      common.payload = payloadOf('#bfPayload');
+      common.bhMinDist = $('#bfBhFar').checked ? LDT.CFG.BH_MIN_DIST : 0;
       common.limit = 1000;
     } else {
       common.maxPhases = Math.max(1, +$('#phMaxPhases').value || 1600);
       common.calibrator = $('#phCalibrator').checked;
+      common.multiChain = $('#phMultiChain').checked;
       common.wrap = $('#phWrap').checked;
-      var mode = $('#phPayload').value;
-      var presets = LDT.CFG.PAYLOADS;
-      common.payload = mode === 'swap'
-        ? presets.swap.concat([pickDamageMod()])
-        : (presets[mode] || presets.grab);
+      common.payload = payloadOf('#phPayload');
     }
     return common;
   }
@@ -4516,6 +4773,7 @@ window.ICON_DATA = {
     head.appendChild(metric('缺失', sol.score.kinds + ' 种 / ' + sol.score.pieces + ' 个', ''));
     head.appendChild(metric('槽位', sol.slots + ' / ' + (sol.staffCap || 26) + ' 格', ''));
 
+    // ---- 页签专属徽章
     if (sol.page === 'phase') {
       head.appendChild(badge(sol.combo.label, ''));
       head.appendChild(badge('相位 ' + sol.pEff + ' 份' +
@@ -4523,20 +4781,25 @@ window.ICON_DATA = {
       if (sol.pEff > LDT.CFG.PHASE.speedZeroAt) {
         head.appendChild(badge('必须配加速', 'red'));
       }
+      if (sol.wrap) head.appendChild(badge('回绕', 'warn'));
     } else if (sol.page === 'tentacle') {
-      head.appendChild(badge('上/下飞 ' + sol.nEff + (sol.nEff !== sol.nPhys ? '（实体 ' + sol.nPhys + '）' : ''), 'gold'));
+      head.appendChild(badge('上/下飞 ' + sol.nEff +
+        (sol.nEff !== sol.nPhys ? '（实体 ' + sol.nPhys + '）' : ''), 'gold'));
       head.appendChild(badge('α = ' + sol.alpha.toFixed(4), ''));
-      head.appendChild(badge('法杖 ×' + sol.staff + '（' + (sol.staffCap || 26) + ' 格）', ''));
+      if (sol.wrap) head.appendChild(badge('回绕', 'warn'));
     } else {
       head.appendChild(badge('黑洞 ' + sol.bh.d.toFixed(0) + ' + 闪电弹 ' + sol.lt.d.toFixed(0), ''));
-      head.appendChild(badge('法杖 ×' + sol.bh.staff + '（' + (sol.staffCap || 26) + ' 格）', ''));
     }
+
+    // ---- 法杖徽章（带图标）
+    head.appendChild(staffBadge(sol));
+
     if (sol.overCapacity) head.appendChild(badge('超容量', 'red'));
     card.appendChild(head);
 
     var firstMissing = true;
     LDT.Format.blocks(sol, owned, guar).forEach(function (b) {
-      var row = el('div', 'row');
+      var row = el('div', 'row' + (b.optional ? ' opt' : ''));
       row.appendChild(el('div', 'row-label', b.label));
       var body = el('div', 'row-body');
       b.items.forEach(function (it) {
@@ -4549,6 +4812,25 @@ window.ICON_DATA = {
       card.appendChild(row);
     });
     return card;
+  }
+
+  function staffBadge(sol) {
+    // 相位跃迁的距离只由「跳跃次数 × 相位个数」决定，与法杖倍率无关
+    if (sol.page === 'phase') return el('span', 'badge', '法杖容量 ' + (sol.staffCap || 26) + ' 格');
+    var s = sol.staff;
+    var b = el('span', 'badge staff');
+    if (s && s.icon) {
+      var img = el('img');
+      img.src = iconUrl(s.icon);
+      img.alt = '';
+      b.appendChild(img);
+      b.appendChild(el('span', null, s.label + '（' + s.cap + ' 格）'));
+    } else if (sol.page === 'tentacle' && sol.calibrator) {
+      b.appendChild(el('span', null, '校准器已规避法杖倍率'));
+    } else {
+      b.appendChild(el('span', null, '普通法杖 ×1.0（26 格）'));
+    }
+    return b;
   }
 
   function fmtInt(n) {
@@ -4631,13 +4913,24 @@ window.ICON_DATA = {
     ok('80 = D10·D4·D2', d80.length > 0,
       d80.length ? d80[0].chains.map(function (c) { return 'D' + c.digits.join(''); }).join('') : '');
 
-    out.push('=== 3. 经典配置 ===');
+    out.push('=== 3. 复制链辅助法术 ===');
+    var e1 = LDT.Chain.extras([{ digits: [2], product: 2 }], 1, false);
+    ok('单链 + 只复制 1 个法术 → 不需追加触发', e1.triggers === 0);
+    var e2 = LDT.Chain.extras([{ digits: [2], product: 2 }], 2, false);
+    ok('单链 + 复制多个法术 → 1 个追加触发', e2.triggers === 1);
+    var e3 = LDT.Chain.extras([{ digits: [2], product: 2 }, { digits: [4], product: 4 }], 1, false);
+    ok('两条链 → 2 个追加触发', e3.triggers === 2);
+    ok('两条链 → 必须带刷新环', e3.reset === true);
+    ok('回绕 → 必须带刷新环', LDT.Chain.extras([], 1, true).reset === true);
+    ok('单链无回绕 → 不要刷新环', LDT.Chain.extras([{ digits: [2], product: 2 }], 1, false).reset === false);
+
+    out.push('=== 4. 经典配置 ===');
     var c200 = LDT.Phase.combos().filter(function (c) { return c.limiter && c.limiter.frames === 200; })[0];
     ok('200f + 80 相位 = 35840', LDT.Phase.distance(80, c200.jumps) === 35840);
     var ct = LDT.Phase.combos().filter(function (c) { return c.carrier.kind === 'timer'; })[0];
     ok('定时能量球 + 160 相位 = 35840', LDT.Phase.distance(160, ct.jumps) === 35840);
 
-    out.push('=== 4. 本页求解器（' + ({ tentacle: '速度触手', blackflash: '黑洞闪电弹', phase: '相位跃迁' }[state.page]) + '） ===');
+    out.push('=== 5. 本页求解器（' + ({ tentacle: '速度触手', blackflash: '黑洞闪电弹', phase: '相位跃迁' }[state.page]) + '） ===');
     var opts = readOpts();
     opts.owned = {}; opts.guaranteed = guar;
     var s;
@@ -4650,27 +4943,66 @@ window.ICON_DATA = {
       ok('同种法术不超上限', s.every(function (x) {
         return Object.keys(x.need).every(function (k) { return x.need[k] <= opts.maxPerSpell; });
       }));
+
       var blocks = LDT.Format.blocks(s[0], owned, guar);
       var copyBlk = blocks.filter(function (b) { return b.key === 'copy'; })[0];
       if (copyBlk) {
         var idxDn = copyBlk.items.findIndex(function (i) { return LDT.Format.isDn(i.id); });
-        var idxFly = copyBlk.items.findIndex(function (i) {
-          return !LDT.Format.isDn(i.id) && i.id !== 'RESET';
-        });
-        ok('Dn 链排在相位/上下飞之前', idxDn < 0 || idxFly < 0 || idxDn < idxFly,
-           'Dn@' + idxDn + ' 相位/上下飞@' + idxFly);
+        ok('复制链行 Dn 在前', idxDn <= 0, 'Dn@' + idxDn);
         ok('刷新环在复制链行末尾', copyBlk.items.every(function (i, idx, arr) {
           return i.id !== 'RESET' || idx === arr.length - 1;
         }));
-        ok('Dn 链给出禁抽提示', !idxDn || !!copyBlk.hint);
       }
-      ok('速度行不含刷新环', !blocks.some(function (b) {
-        return b.key === 'speed' && b.items.some(function (i) { return i.id === 'RESET'; });
-      }));
+      // 相位只在相位页属于复制链；触手页必须归入速度修正
+      var inCopy = blocks.some(function (b) {
+        return b.key === 'copy' && b.items.some(function (i) { return i.id === 'PHASING_ARC'; });
+      });
+      var inSpeed = blocks.some(function (b) {
+        return b.key === 'speed' && b.items.some(function (i) { return i.id === 'PHASING_ARC'; });
+      });
+      if (state.page === 'phase') ok('相位页：相位在复制链里', inCopy || !inSpeed);
+      if (state.page === 'tentacle') ok('触手页：相位在速度修正里（不在复制链）', !inCopy);
+
+      if (state.page === 'blackflash') {
+        ok('黑洞与闪电弹各带一个追加失效触发',
+          blocks.filter(function (b) { return b.key === 'bh' || b.key === 'lt'; })
+            .every(function (b) {
+              return b.items.some(function (i) { return i.id === LDT.CFG.CARRIER_TRIGGER; });
+            }));
+        ok('黑洞飞离加载区 ≥ 2048 px', s.every(function (x) {
+          return !opts.bhMinDist || x.bh.d >= opts.bhMinDist;
+        }));
+      }
+      if (state.page === 'tentacle') {
+        ok('校准器时法杖倍率不参与', !opts.calibrator ||
+          s.every(function (x) { return !x.staff; }));
+        ok('上下飞只算 1 个本体', s.every(function (x) {
+          var n = 0;
+          LDT.CFG.FLY.forEach(function (id) { n += x.need[id] || 0; });
+          return n <= 1;
+        }));
+      }
     }
 
     $('#selftestOut').textContent = out.join('\n') + '\n\n=== ' + pass + ' 通过 / ' + fail + ' 失败 ===';
   }
+
+  /** 页面专属致谢（没有就隐藏） */
+  function updateCredit(page) {
+    var credit = $('#pageCredit');
+    if (!credit) return;
+    var txt = PAGE_CREDIT[page];
+    credit.hidden = !txt;
+    credit.innerHTML = txt || '';
+  }
+
+  /* ------------------------------------------------------------ 侧栏 */
+  function setPanel(open) {
+    document.body.classList.toggle('panel-collapsed', !open);
+    // 遮罩只在「窄屏 + 面板展开」时出现
+    $('#scrim').hidden = !(open && isNarrow());
+  }
+  function isNarrow() { return window.matchMedia('(max-width: 860px)').matches; }
 
   /* ------------------------------------------------------------ 事件绑定 */
   function switchPage(page) {
@@ -4681,10 +5013,9 @@ window.ICON_DATA = {
     ['tentacle', 'blackflash', 'phase'].forEach(function (p) {
       var layer = document.getElementById('deco-' + p);
       if (layer) layer.classList.toggle('active', p === page);
-    });
-    ['tentacle', 'blackflash', 'phase'].forEach(function (p) {
       $('#pp-' + p).hidden = (p !== page);
     });
+    updateCredit(page);
     state.sols = [];
     state.pageIdx = 0;
     $('#resultStat').textContent = '尚未计算';
@@ -4709,19 +5040,44 @@ window.ICON_DATA = {
       $('#customDistWrap').hidden = this.value !== 'custom';
     });
 
+    // 误差容限：px 与 % 各自记住自己的值，避免「200% 误差」这种荒谬默认值
+    var tolMode = 'abs';
+    var tolStore = { abs: 200, rel: 1 };
+    $('#tolMode').addEventListener('change', function () {
+      tolStore[tolMode] = Math.max(0, +$('#tolerance').value || 0);
+      tolMode = this.value;
+      $('#tolerance').value = tolStore[tolMode];
+    });
+
     $('#spellSearch').addEventListener('input', function () {
       var q = this.value.trim().toLowerCase();
       Array.prototype.forEach.call(document.querySelectorAll('.sitem'), function (r) {
         r.style.display = (!q || r.dataset.search.indexOf(q) >= 0) ? '' : 'none';
       });
+      // 搜索后隐藏空分区
+      Array.prototype.forEach.call(document.querySelectorAll('.sgroup'), function (g) {
+        var any = Array.prototype.some.call(g.querySelectorAll('.sitem'), function (r) {
+          return r.style.display !== 'none';
+        });
+        g.style.display = any ? '' : 'none';
+      });
     });
 
     $('#clearOwned').addEventListener('click', function () {
       owned = {};
-      Array.prototype.forEach.call(document.querySelectorAll('.sitem'), function (r) {
-        refreshRow(r, r.dataset.id);
-      });
+      Object.keys(rowsById).forEach(refreshAll);
+      // 已有结果时立刻重算，否则用户会以为「清空」没生效
+      if (state.sols.length) solve();
+      else renderResults();
     });
+
+    // 侧栏
+    $('#panelToggle').addEventListener('click', function () {
+      setPanel(document.body.classList.contains('panel-collapsed'));
+    });
+    $('#panelClose').addEventListener('click', function () { setPanel(false); });
+    $('#scrim').addEventListener('click', function () { setPanel(false); });
+    if (isNarrow()) setPanel(false);
 
     $('#solveBtn').addEventListener('click', solve);
     $('#pageSize').addEventListener('change', function () {
@@ -4732,6 +5088,18 @@ window.ICON_DATA = {
     $('#sortMode').addEventListener('change', function () { if (state.sols.length) solve(); });
     $('#runSelftest').addEventListener('click', runSelftest);
 
+    // 校准器开启时法杖倍率不参与计算，但控件保持可选（只做标注，不禁用）
+    function syncCalib() {
+      var on = $('#ttCalibrator').checked;
+      $('#ttStaffLabel').textContent = on
+        ? '法杖速度倍率（校准器已规避，不参与）'
+        : '法杖速度倍率';
+      $('#ttStaffField').classList.toggle('ignored', on);
+    }
+    $('#ttCalibrator').addEventListener('change', syncCalib);
+    syncCalib();
+
+    updateCredit(state.page);
     renderResults();
   }
 

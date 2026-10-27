@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>跃迁法术收集计算器 v0.1.1 · Noita</title>
+<!--__STYLE__-->
+</head>
+<body>
+
+<!-- 装饰层（图标为 Wiki 透明像素图，随页签切换） -->
+<div class="deco-layer active" id="deco-tentacle" aria-hidden="true">
+  <img class="deco t1" data-icon="TENTACLE_TIMER" alt="">
+  <img class="deco t2" data-icon="TENTACLE_TIMER" alt="">
+  <img class="deco t3" data-icon="TENTACLE_TIMER" alt="">
+  <img class="deco fu" data-icon="FLY_UPWARDS" alt="">
+  <img class="deco fd" data-icon="FLY_DOWNWARDS" alt="">
+  <img class="deco wn" data-icon="BLACK_HOLE_DEATH_TRIGGER" alt="">
+</div>
+
+<div class="deco-layer" id="deco-blackflash" aria-hidden="true">
+  <img class="deco t1" data-icon="BLACK_HOLE" alt="">
+  <img class="deco t2" data-icon="LIGHTNING" alt="">
+  <img class="deco t3" data-icon="BLACK_HOLE" alt="">
+  <img class="deco fu" data-icon="LIFETIME" alt="">
+  <img class="deco fd" data-icon="LIGHTNING" alt="">
+  <img class="deco wn" data-icon="EXPLODING_DEER" alt="">
+</div>
+
+<div class="deco-layer" id="deco-phase" aria-hidden="true">
+  <img class="deco t1" data-icon="MEGALASER" alt="">
+  <img class="deco t2" data-icon="ADD_DEATH_TRIGGER" alt="">
+  <img class="deco t3" data-icon="PHASING_ARC" alt="">
+  <img class="deco fu" data-icon="ADD_DEATH_TRIGGER" alt="">
+  <img class="deco fd" data-icon="PHASING_ARC" alt="">
+  <img class="deco wn" data-icon="MEGALASER" alt="">
+</div>
+
+
+<header class="topbar">
+  <button class="panel-toggle" id="panelToggle" title="展开 / 收起法术面板" aria-label="切换法术面板">☰</button>
+  <div class="brand">
+    <span class="logo">◈</span>
+    <div>
+      <h1>跃迁法术收集计算器</h1>
+      <p class="sub">勾选你已有的法术，算出还差什么 · v0.1.1</p>
+    </div>
+  </div>
+  <nav class="tabs" role="tablist">
+    <button class="tab active" data-page="tentacle" role="tab">速度触手跃迁</button>
+    <button class="tab" data-page="blackflash" role="tab">黑洞闪电弹跃迁</button>
+    <button class="tab" data-page="phase" role="tab">相位跃迁</button>
+  </nav>
+</header>
+
+<main class="layout">
+
+  <!-- ============ 左：法术收集面板（可收回） ============ -->
+  <aside class="panel" id="collectPanel">
+    <div class="panel-head">
+      <h2>我的法术</h2>
+      <button class="link" id="clearOwned">清空</button>
+      <button class="link panel-close" id="panelClose" title="收起面板">✕</button>
+    </div>
+    <input class="search" id="spellSearch" placeholder="搜索法术名 / ID…">
+    <p class="hint">勾选＝拥有；数量留空按 1 计。常备法术默认视为已有，但仍会显示需要几个。</p>
+    <div class="spell-groups" id="spellGroups"></div>
+  </aside>
+
+  <!-- ============ 右：工作区 ============ -->
+  <section class="workspace">
+
+    <!-- 公共参数 -->
+    <div class="params">
+      <label class="field">
+        <span>目标距离</span>
+        <select id="targetDist">
+          <option value="35840">NG（35840 px）</option>
+          <option value="32768">NG+（32768 px）</option>
+          <option value="custom">自定义…</option>
+        </select>
+      </label>
+      <label class="field" id="customDistWrap" hidden>
+        <span>自定义距离</span>
+        <input type="number" id="customDist" value="35840" min="1" step="1">
+      </label>
+      <label class="field">
+        <span>误差容限</span>
+        <span class="inline">
+          <input type="number" id="tolerance" value="200" min="0" step="1">
+          <select id="tolMode">
+            <option value="abs">px</option>
+            <option value="rel">%</option>
+          </select>
+        </span>
+      </label>
+      <label class="field">
+        <span>同种法术最多收集</span>
+        <input type="number" id="maxPerSpell" value="3" min="1" step="1">
+      </label>
+      <label class="field">
+        <span>繁茂洞穴倍率（2/3/4 级）</span>
+        <input type="number" id="multFungal" value="2.0" min="0" step="0.1">
+      </label>
+      <label class="field">
+        <span>地狱法杖倍率（10 级）</span>
+        <input type="number" id="multHell" value="3.0" min="0" step="0.1">
+      </label>
+      <label class="chk" title="取消勾选后，校准器 / 零时 / 载荷等可选组件不计入收集难度"><input type="checkbox" id="countOptional" checked> 难度计入可选组件</label>
+      <label class="field">
+        <span>排序</span>
+        <select id="sortMode">
+          <option value="weight">收集难度最小（默认）</option>
+          <option value="error">误差最小</option>
+        </select>
+      </label>
+      <button class="primary" id="solveBtn">开始计算</button>
+    </div>
+
+    <!-- 各页专属参数 -->
+    <div class="page-params" id="pp-tentacle">
+      <label class="field"><span>最大上/下飞数</span><input type="number" id="ttMaxUpDown" value="100" min="0"></label>
+      <label class="field" title="按法术个数计：同种 n 个就占 n 个名额"><span>最大速度修正数（含重复）</span><input type="number" id="ttMaxMods" value="5" min="0" max="10"></label>
+      <label class="field" id="ttStaffField" title="校准器会规避法杖的隐藏速度倍率，因此两者至多用一个"><span id="ttStaffLabel">法杖速度倍率</span>
+        <select id="ttStaff">
+          <option value="1">一般法杖 1.0（26 格）</option>
+          <option value="1.25">迅捷之杖 1.25（19 格）</option>
+          <option value="1.5">多重之杖 1.5（26 格）</option>
+          <option value="any" selected>三种都搜</option>
+        </select>
+      </label>
+      <label class="field"><span>载荷</span>
+        <select id="ttPayload">
+          <option value="grab" selected>抓取魔弹 + 内在施法</option>
+          <option value="orbit">抓取魔弹 + 行星环绕 + 环绕拉帕</option>
+        </select>
+      </label>
+      <label class="chk" title="用失效触发投射物 + 瞄准修正间接校准触手（可选，手动瞄准也能打）；启用后法杖倍率不参与计算"><input type="checkbox" id="ttCalibrator" checked> 带校准器（可选）</label>
+      <label class="chk" title="默认只搜一条复制链"><input type="checkbox" id="ttMultiChain"> 启用多复制链</label>
+      <label class="chk"><input type="checkbox" id="ttWrap"> 回绕</label>
+    </div>
+
+    <div class="page-params" id="pp-blackflash" hidden>
+      <label class="field"><span>法杖速度倍率</span>
+        <select id="bfStaff">
+          <option value="1">一般法杖 1.0（26 格）</option>
+          <option value="1.25">迅捷之杖 1.25（19 格）</option>
+          <option value="1.5">多重之杖 1.5（26 格）</option>
+          <option value="any" selected>三种都搜</option>
+        </select>
+      </label>
+      <label class="field"><span>最大修正数</span><input type="number" id="bfMaxCorr" value="8" min="0" max="14"></label>
+      <label class="field" title="按法术个数计：同种 n 个就占 n 个名额"><span>最大速度修正数（含重复）</span><input type="number" id="bfMaxSpeed" value="5" min="0" max="10"></label>
+      <label class="field"><span>载荷</span>
+        <select id="bfPayload">
+          <option value="grab" selected>抓取魔弹 + 内在施法</option>
+          <option value="orbit">抓取魔弹 + 行星环绕 + 环绕拉帕</option>
+          <option value="swap">交换者 + 鹿诱饵 + 伤害修正</option>
+        </select>
+      </label>
+      <label class="chk" title="黑洞必须飞出加载区（≥ 2048 px）才能让闪电弹不撞墙"><input type="checkbox" id="bfBhFar" checked> 黑洞远离加载区（≥2048 px）</label>
+    </div>
+
+    <div class="page-params" id="pp-phase" hidden>
+      <label class="field"><span>最大相位个数</span><input type="number" id="phMaxPhases" value="1600" min="1"></label>
+      <label class="field"><span>载荷</span>
+        <select id="phPayload">
+          <option value="grab" selected>抓取魔弹 + 内在施法</option>
+          <option value="orbit">抓取魔弹 + 行星环绕 + 环绕拉帕</option>
+          <option value="swap">交换者 + 鹿诱饵 + 伤害修正</option>
+        </select>
+      </label>
+      <label class="chk" title="校准器只是瞄准辅助，可以手动瞄准省掉"><input type="checkbox" id="phCalibrator" checked> 带校准器（可选）</label>
+      <label class="chk" title="默认只搜一条复制链"><input type="checkbox" id="phMultiChain"> 启用多复制链</label>
+      <label class="chk"><input type="checkbox" id="phWrap"> 回绕</label>
+    </div>
+
+    <!-- 结果区 -->
+    <div class="results-head">
+      <span id="resultStat">尚未计算</span>
+      <span class="spacer"></span>
+      <label class="field small"><span>每页显示</span>
+        <select id="pageSize"><option>20</option><option selected>50</option><option>100</option></select>
+      </label>
+    </div>
+    <div id="results" class="results"></div>
+    <div class="pager" id="pager"></div>
+
+    <!-- 自检 -->
+    <details class="selftest">
+      <summary>内置自检（点击运行）</summary>
+      <button class="link" id="runSelftest">运行自检</button>
+      <pre id="selftestOut"></pre>
+    </details>
+  </section>
+</main>
+
+<div class="scrim" id="scrim" hidden></div>
+
+<footer class="foot">
+  <div class="foot-main">
+    <span>数据来源：中文 Noita Wiki（法术等级和生成概率）。收集难度：单次概率取倒数后按 3-范数聚合，越小越容易凑齐。</span>
+    <span>本工具为社区辅助工具，非官方。</span>
+  </div>
+  <div class="foot-credit">
+    <span>致谢：帮助本项目的 Wiki 维护者 —— <b>zb01</b>、<b>sajoyukimi</b>、<b>半导体果冻</b>、<b>kuroleaf</b></span>
+    <span id="pageCredit" hidden></span>
+  </div>
+</footer>
+
+<script>/*__DATA__*/</script>
+<script>/*__ICONS__*/</script>
+<script>/*__ENGINE__*/</script>
+<script>/*__APP__*/</script>
+</body>
+</html>

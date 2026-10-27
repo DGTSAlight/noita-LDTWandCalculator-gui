@@ -4,14 +4,14 @@ Two single-file HTML tools. No environment needed — double-click and run, work
 
 | Tool | Question it answers |
 |---|---|
-| **Spell Collection Calculator** (v0.1.0) | I want to travel this far — **which spells am I missing?** |
+| **Spell Collection Calculator** (v0.1.1) | I want to travel this far — **which spells am I missing?** |
 | **Speed Warp Calculator** (v0.7) | I have these modifiers — **how far can I travel?** |
 
 > 🌐 **Language**：[中文（默认）](README.md) · English (current)
 
 ---
 
-## 1. Spell Collection Calculator (v0.1.0)
+## 1. Spell Collection Calculator (v0.1.1)
 
 Tick the spells you already own. The tool searches every viable warp build, ranks them by **collection difficulty**, and highlights what is still missing.
 
@@ -21,37 +21,45 @@ Tick the spells you already own. The tool searches every viable warp build, rank
 
 - 🔍 **Searches the up/down-flight count** — cap 100 by default; the exponent is solved from an α pool.
 - 🧩 **α pool** — 10 speed modifiers (total count ≤ 5) × 3 staff tiers × slime pellet.
-- 🛠️ **Calibrator, refresh ring, wrap-around** — all optional; wrap-around is allowed once.
+- 🛠️ **Calibrator and staff multiplier are mutually exclusive** — a calibrator bypasses the wand's hidden speed multiplier, so at most one of the two is used. The calibrator itself is optional (you can aim by hand); with it on, the staff dropdown stays clickable and is merely labelled "bypassed".
+- ↕️ **Up-flight and down-flight are interchangeable** — the tentacle ignores direction and turns the speed entirely into launch-direction velocity, so the tool picks whichever you own or can get more easily.
 
 #### 🌌 Black-hole + lightning bolt page
 
 - 💫 **Dual carrier, closed-form distance** — the sum of both carrier distances approaches the target.
-- 🪄 **Staff multiplier** — none 1.0 (26 slots) / Swift Wand 1.25 (19 slots) / Multishot Wand 1.5 (26 slots) / search both.
+- 🪄 **Staff multiplier** — none 1.0 (26 slots) / Swift Wand 1.25 (19 slots) / Multishot Wand 1.5 (26 slots) / search all three; the card shows the matching staff icon.
+- 🚀 **Black hole must leave the loaded area** — it has to travel ≥ 2048 px or the lightning bolt hits a wall. Toggleable, on by default.
 - 📐 **Error range** — also shows the distance band caused by the black hole's ±7f lifetime.
+- 🗂️ **Required components split in two rows** — which modifiers go on the black hole, which on the lightning bolt.
 
 #### 🌀 Phase warp page
 
-- 🎯 **Three carriers** — Timed Energy Orb 100f; Death-trigger Black Hole + Chaotic Larpa 300f / Copy Trail 200f.
+- 🎯 **Carriers** — Timed Energy Orb 100f; Death-trigger Black Hole / Intense Concentrated Light + Chaotic Larpa 300f or Copy Trail 200f.
 - ⏱️ **Jump count** — a jump that lands on the expiry frame is swallowed; timed carriers never swallow.
 - 🔢 **Phase cap 1600** — above 90 phases the card flags "speed modifier required".
+- 🦌 **Swapper restriction** — only builds whose payload rides on "Add Death Trigger" can use the swapper deer; picking it automatically rules out the timed energy orb.
 
 #### Shared
 
-- 🧾 **Three blocks** — copy chain + wrap-around / extra speed multipliers / required and optional components.
-- 🟥 **Gap highlight** — missing spells are red, labelled "missing 1 (have 0 / need 1)".
+- 🧾 **Zones** — copy chain / extra speed multipliers / required components / payload / optional components. Wrap-around gets its own badge so nobody assumes every build needs it.
+- 📖 **Official Chinese names** — spells are labelled with the official wiki names, and the spell panel shows the speed multiplier (×7.5) or lifetime change (+75f) inline.
+- 🔗 **Copy-chain helpers added automatically** — two chains get 2 "Add \*Trigger" spells plus the refresh ring; one chain copying several spells gets 1; one chain copying a single spell gets none.
+- 🏷️ **Multi-role spells** — Light Shot counts as both a speed and a damage modifier, Linear Arc / Horizontal Path as both calibrator and damage; ticking one ticks them all.
+- 🟥 **Gap highlight** — missing spells are red, labelled "missing 1 (have 0 / need 1)"; the long form appears once per card.
 - 📊 **Collection difficulty** — reciprocal of the per-roll probability, aggregated with a 3-norm; lower is easier.
+- 📱 **Collapsible spell panel** — collapse with ☰ on desktop; on narrow screens it becomes a drawer so it no longer covers the calculator.
 - 🛡️ **Built-in self-test** — runs the checks of the current page; switching tabs clears it.
 
 ### Usage
 
-1. Double-click `跃迁法术收集计算器GUI_v0.1.0.html`.
-2. Tick the spells you own on the left; an empty count means 1.
+1. Double-click `跃迁法术收集计算器GUI_v0.1.1.html`.
+2. Tick the spells you own on the left; an empty count means 1 (tap ☰ on narrow screens).
 3. Set the target distance, tolerance and per-spell cap.
 4. Click "开始计算". Results are sorted from easiest to hardest.
 
 ### File
 
-- `跃迁法术收集计算器GUI_v0.1.0.html` — the whole tool in one file (~150 KB).
+- `跃迁法术收集计算器GUI_v0.1.1.html` — the whole tool in one file (~183 KB), works offline.
 
 ---
 
@@ -140,8 +148,8 @@ The main content of this project was **generated with the assistance of an AI la
 | Section | Content |
 |---|---|
 | `<style>` | Theme variables, layout, decoration layer |
-| `window.SPELL_DATA` | Weight data of 58 spells (inlined JSON) |
-| `window.ICON_DATA` | 58 icons as base64 |
+| `window.SPELL_DATA` | Weights and multi-role data of 51 spells (inlined JSON) |
+| `window.ICON_DATA` | 51 spell icons + 2 staff icons as base64 |
 | `window.LDT` | Algorithm engine (UMD, extractable) |
 | Trailing IIFE | UI logic (panel, parameters, rendering, self-test) |
 
@@ -149,14 +157,16 @@ The main content of this project was **generated with the assistance of an AI la
 
 | Module | Responsibility |
 |---|---|
-| `CFG` | All constants: world width, phase cadence, staff capacity, payload presets, optional components |
+| `CFG` | All constants: world width, phase cadence, staff tiers and capacities, payload presets, optional components, role zones |
 | `DN` | Divide-N chain enumeration (position rule = iteration limit), reachable copy counts |
 | `Weights` | Percentage → per-roll probability q (normalised by tier frequency) |
 | `Phase` | Jump count and distance |
 | `Tentacle` | α pool construction and exponent solving |
 | `BlackFlash` | Closed-form distance and two-carrier pairing |
 | `Score` | Collection difficulty (3-norm) and ordering |
-| `Format` | Three-block grouping and gap labels |
+| `Zone` | Zone construction, merging, equivalence picking (up/down flight, Linear Arc / Horizontal Path, …) |
+| `Chain` | Copy-chain helper rules (how many Add \*Trigger spells, when the refresh ring is mandatory) |
+| `Format` | Zones → display items + gap labels |
 
 ### 3.3 Core algorithms
 
@@ -165,6 +175,8 @@ The main content of this project was **generated with the assistance of an AI la
 3. **Black-flash distance** — the v0.7 closed-form formula; both carrier distances are summed and compared with the target.
 4. **Collection difficulty** — `q(s) = Σ f(t)·pct/100 ÷ Σ f(t)`, `c(s) = 1/q(s)`, `S = (Σ(gap × c)^3)^(1/3)`.
 5. **Reachable DN counts** — 116 legal chains, 37 distinct products; 46.2% of integers up to 1600 are reachable.
+6. **Copy-chain helpers** — `chains ≥ 2 → 2 Add \*Trigger spells + refresh ring`; `one chain, several spells → 1`; `one chain, one spell → 0`; `wrap-around → refresh ring mandatory`.
+7. **Equivalence classes** — up/down flight, Linear Arc / Horizontal Path, death-trigger black hole / Delayed Spell, and the three Add \*Trigger spells are interchangeable; the tool picks one by "already owned → easier to obtain" so it never counts a substitute twice.
 
 ### 3.4 Reuse
 
@@ -175,8 +187,9 @@ The main content of this project was **generated with the assistance of an AI la
 
 ## 4. Acknowledgements
 
-- **The maintainers of the Chinese Noita Wiki**: every generation weight, phase timing rule and wrap-around detail in this tool comes from that wiki. The maintainers also rewrote the phase-related pages and answered our questions one by one. This tool would not exist without them.
-- **UBK**: technical support for the black-flash warp calculator.
+- **The maintainers of the Chinese Noita Wiki — zb01, sajoyukimi, 半导体果冻, kuroleaf**: every generation weight, phase timing rule, wrap-around detail and the Divide iteration / no-draw rules in this tool come from that wiki. The maintainers also rewrote the phase-related pages and answered our questions one by one. This tool would not exist without them.
+- **机・丹尼尔・奥利瓦**: whose project inspired the tentacle-warp approach used here.
+- **UBK**: technical support for the black-hole + lightning-bolt warp calculator.
 - The weight evaluation borrows the classic coupon-collector argument.
 
 ---

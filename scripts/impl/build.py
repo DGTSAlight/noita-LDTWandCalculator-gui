@@ -6,6 +6,7 @@
 
 组装规则（模板 src/template.html 中的占位符）：
     <!--__STYLE__-->    ← src/style.css
+    /*__DATA__*/        ← data/spell_weights.json（内联为 window.SPELL_DATA）
     /*__ICONS__*/       ← src/icons.js
     /*__ENGINE__*/      ← src/engine.js
     /*__APP__*/         ← src/app.js
@@ -17,7 +18,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, "src")
-DEFAULT_OUT = "跃迁法术收集计算器GUI_v0.1.0.html"
+DEFAULT_OUT = "跃迁法术收集计算器GUI_v0.1.1.html"
 
 REQUIRED = ["template.html", "style.css", "engine.js", "icons.js", "app.js"]
 DATA_JSON = os.path.join(ROOT, "data", "spell_weights.json")
