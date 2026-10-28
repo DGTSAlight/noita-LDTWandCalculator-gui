@@ -36,8 +36,17 @@
     // Dn 链：位置约束 = 迭代极限（D10=2 / D4,D3=3 / D2=4）
     DN_POSITIONS: [[2, 3, 4, 10], [2, 3, 4, 10], [2, 3, 4], [2]],
     DN_MAX_CHAINS: 2,     // 最多两条链相加
-    // 权重倍率（可调）
+    // 权重倍率（可调）—— 语义是「该等级法术的获取速率倍率」
     TIER_MULT: { 2: 2.0, 3: 2.0, 4: 2.0, 10: 3.0 },
+    /**
+     * 搜索模式（「去哪刷」）：模式内各等级均匀出现，一次抽取只出一个等级。
+     * 收集难度按「每个法术先指派到对自己最有利的模式 → 阶段内 3-范数 → 阶段间求和」计算。
+     */
+    FARM_MODES: [
+      { key: 'fungal', label: '繁茂', tiers: [2, 3, 4] },
+      { key: 'hell', label: '地狱', tiers: [10] },
+      { key: 'uniform', label: '均匀', tiers: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+    ],
     // 法杖倍率 → 容量（迅捷之杖 1.25 固定 19 格，多重之杖 1.5 固定 26 格）
     STAFFS: [
       { key: '1', mult: 1, cap: 26, label: '一般法杖 ×1.0', icon: '' },
@@ -253,37 +262,45 @@
 
   // ---------------------------------------------------------------- 权重
   var Weights = (function () {
-    var _cache = null, _prob = null;
+    var _cache = null, _prob = null, _tier = null, _mult = null;
 
     /**
      * @param {Array} spells data/spell_weights.json 的 spells 数组
      * @param {object} opt {scheme:'pct'|'raw', mult:{tier:factor}}
+     *
+     * mult(t) 的语义是**该等级法术的获取速率倍率**（「地狱杖出 10 级法术的频率是基准的 3 倍」），
+     * 不是「在固定获取预算里占多少份额」。因此这里是**按速率求和**，不能再除以 Σmult：
+     * 一旦除以 Σmult，把某一级的倍率调高就会稀释其它等级的速率，
+     * 导致「调高倍率反而更难」的荒谬结果（v0.1.1 曾经就是这样，v0.3.4 修正）。
      */
     function build(spells, opt) {
       opt = opt || {};
       var scheme = opt.scheme || 'pct';
       var mult = opt.mult || CFG.TIER_MULT;
-      // 等级出现频率之和（用于把「等级内概率」折算成「每次获取机会的概率」）
-      var multSum = 0;
-      for (var t = 0; t <= 10; t++) multSum += (mult[t] != null ? mult[t] : 1);
-      if (!(multSum > 0)) multSum = 1;
 
-      var map = {}, prob = {};
+      var map = {}, prob = {}, tierP = {};
       spells.forEach(function (s) {
-        if (s.status !== 'ok') { map[s.id] = 0; prob[s.id] = 0; return; }
+        if (s.status !== 'ok') { map[s.id] = 0; prob[s.id] = 0; tierP[s.id] = {}; return; }
         var tiers = scheme === 'raw' ? (s.tiers_raw || {}) : (s.tiers_pct || {});
-        var total = 0;
+        var total = 0, wsum = 0, per = {};
         Object.keys(tiers).forEach(function (t) {
           var v = tiers[t];
           if (!(v > 0)) return;
-          total += v * (mult[t] != null ? mult[t] : 1);
+          // pct 以百分比存储 → 除以 100 得到「该等级内命中该法术的概率」
+          var p = scheme === 'raw' ? v : v / 100;
+          var m = mult[t] != null ? mult[t] : 1;
+          per[t] = p;
+          total += p * m;
+          wsum += v * m;
         });
-        map[s.id] = total;
-        // pct 以百分比存储 → 除以 100 得到概率；raw 口径下不做换算
-        prob[s.id] = (scheme === 'raw' ? total : total / 100) / multSum;
+        map[s.id] = wsum;        // 权重（Σ 百分比 × 倍率），与文档 §4 的 W(s) 一致
+        prob[s.id] = total;      // 单次基准抽取的期望命中份数（Σ 倍率 × 等级内概率）
+        tierP[s.id] = per;
       });
       _cache = map;
       _prob = prob;
+      _tier = tierP;
+      _mult = mult;
       return map;
     }
 
@@ -292,13 +309,27 @@
       return _cache[id] || 0;
     }
 
-    /** 每次获取机会抽到该法术的概率 */
+    /** 每次「基准抽取」命中该法术的期望份数（= Σ 等级速率倍率 × 该等级概率） */
     function probOf(id) {
       if (!_prob) throw new Error('Weights.build() 未调用');
       return _prob[id] || 0;
     }
 
-    return { build: build, get: get, probOf: probOf };
+    /** 某法术在某等级「等级内命中概率」（0~1） */
+    function tierProb(id, t) {
+      if (!_tier) throw new Error('Weights.build() 未调用');
+      var m = _tier[id];
+      return (m && m[t]) || 0;
+    }
+
+    /** 某等级的获取速率倍率 */
+    function multOf(t) {
+      if (!_mult) throw new Error('Weights.build() 未调用');
+      return _mult[t] != null ? _mult[t] : 1;
+    }
+
+    return { build: build, get: get, probOf: probOf,
+             tierProb: tierProb, multOf: multOf };
   })();
 
   // ---------------------------------------------------------------- 相位
@@ -354,41 +385,160 @@
   // ---------------------------------------------------------------- 评分
   var Score = (function () {
     var NO_DATA_COST = 1e6;
-    var NORM_K = 3;          // k-范数阶数（模拟显示 k=3 最贴近真实收集成本）
+    var NORM_K = 3;          // 阶段内聚合用 3-范数（模拟显示 k=3 最贴近真实收集成本）
 
-    /** 单份该法术的期望获取次数 = 1 / 每次机会抽到它的概率 */
+    /** 模式效率 E_G = 模式内各等级获取速率倍率的平均 */
+    function modeEff(mode) {
+      var sum = 0;
+      mode.tiers.forEach(function (t) { sum += Weights.multOf(t); });
+      return sum / mode.tiers.length;
+    }
+
+    /** 模式内每次抽取命中该法术的概率 p_G(s)（模式内等级均匀，一次只出一个等级） */
+    function modeProb(id, mode) {
+      var sum = 0;
+      mode.tiers.forEach(function (t) { sum += Weights.tierProb(id, t); });
+      return sum / mode.tiers.length;
+    }
+
+    /** 在某个模式下，每次抽取命中该法术的期望份数 = p_G × E_G */
+    function modeGain(id, mode) {
+      return modeProb(id, mode) * modeEff(mode);
+    }
+
+    /** 对该法术最有利的模式（命中速率最大） */
+    function bestMode(id) {
+      var best = CFG.FARM_MODES[0], bestGain = -1;
+      CFG.FARM_MODES.forEach(function (m) {
+        var g = modeGain(id, m);
+        if (g > bestGain) { bestGain = g; best = m; }
+      });
+      return { mode: best, gain: bestGain };
+    }
+
+    /** 单份该法术的最优获取成本（在最有利模式下需要的抽取次数） */
     function unitCost(id) {
-      var q = Weights.probOf(id);
-      return q > 0 ? 1 / q : NO_DATA_COST;
+      var b = bestMode(id);
+      return b.gain > 0 ? 1 / b.gain : NO_DATA_COST;
+    }
+
+    function cube(x) { return x * x * x; }
+    function cbrt(x) { return Math.pow(x, 1 / NORM_K); }
+
+    /**
+     * 指派：把每个缺失法术分到某个搜索模式，使「阶段间求和」的 S 最小。
+     *
+     * 初值用「各自最有利的模式」（命中速率最大），再做局部改进：
+     * 反复尝试把某个法术挪到别的模式，只要总 S 下降就接受。
+     *
+     * 为什么不能只用「各自最有利」：一个法术在 A 模式的单价也许略低，
+     * 但 A 阶段已经被更贵的法术主导，把它挪走几乎不减 A，却凭空多出一个 B 阶段。
+     * 极端情况下会出现「倍率调高、最优方案反而更难」的假象（v0.3.6 实测过 hell 5→10 时 S 从 341 涨到 448）。
+     */
+    function assignModes(items) {
+      var modes = CFG.FARM_MODES, G = modes.length, n = items.length;
+      if (!n) return { assign: [], acc: [], stages: [], total: 0 };
+
+      // cost[i][g]：第 i 个法术在第 g 个模式下的单份成本（抽不到则按极大值处理）
+      var cost = [];
+      for (var i = 0; i < n; i++) {
+        cost[i] = [];
+        for (var g = 0; g < G; g++) {
+          var gain = modeGain(items[i].id, modes[g]);
+          cost[i][g] = gain > 0 ? items[i].lack / gain : NO_DATA_COST * items[i].lack;
+        }
+      }
+
+      // 初值：各自最有利
+      var assign = new Array(n), acc = new Array(G);
+      for (g = 0; g < G; g++) acc[g] = 0;
+      for (i = 0; i < n; i++) {
+        var b = 0;
+        for (g = 1; g < G; g++) if (cost[i][g] < cost[i][b]) b = g;
+        assign[i] = b;
+        acc[b] += cube(cost[i][b]);
+      }
+      var total = 0;
+      for (g = 0; g < G; g++) total += cbrt(acc[g]);
+
+      // 局部改进（最速下降，单步只接受最优的那一次移动）
+      for (var iter = 0; iter < 24; iter++) {
+        var bestDelta = -1e-9, bi = -1, bg = -1;
+        for (i = 0; i < n; i++) {
+          var from = assign[i];
+          for (g = 0; g < G; g++) {
+            if (g === from) continue;
+            var a1 = acc[from] - cube(cost[i][from]);
+            var a2 = acc[g] + cube(cost[i][g]);
+            if (a1 < 0) a1 = 0;
+            var nt = total - cbrt(acc[from]) - cbrt(acc[g]) + cbrt(a1) + cbrt(a2);
+            if (nt - total < bestDelta) { bestDelta = nt - total; bi = i; bg = g; }
+          }
+        }
+        if (bi < 0) break;
+        acc[assign[bi]] -= cube(cost[bi][assign[bi]]);
+        assign[bi] = bg;
+        acc[bg] += cube(cost[bi][bg]);
+        total += bestDelta;
+      }
+
+      var stages = [];
+      for (g = 0; g < G; g++) stages[g] = cbrt(acc[g]);
+      return { assign: assign, cost: cost, acc: acc, stages: stages, total: total };
     }
 
     /**
-     * 收集难度（越小越好）
-     *   单份成本 c_s = 1 / q_s
-     *   方案成本 S = ( Σ (缺口 × c_s)^3 )^(1/3)
-     * 用 k-范数而非求和：真实收集时间由最稀有的那种主导（优惠券收集问题），
-     * 蒙特卡洛模拟显示 k=3 与真实期望的秩相关 >0.995（见 docs/权重口径评估.md）。
+     * 相对难度（S 值，越小越好）
+     *
+     *   1) 指派：每个缺失法术归到某个搜索模式（繁茂 2~4 级 / 地狱 10 级 / 均匀 0~10 级），
+     *            目标是让总 S 最小（初值取各自最有利，再局部改进）
+     *   2) 阶段内：S_G = ( Σ_{s∈G} (缺口_s / gain_s)^3 )^(1/3)   ← 3-范数逼近「最慢的那一项」
+     *   3) 阶段间：S = Σ_G S_G                                  ← 不同地点是先后去的，相加
+     *
+     * 为什么不是把各等级直接求和：现实中一次只能待在一个地点。
+     * 早期口径 `q = Σ_t M(t)·pct` 等价于「所有等级同时并行收集」，会把难度低估 4~10 倍，
+     * 且掩盖「该去哪刷」。仿真核对见 docs/4_策略仿真_v0.3.4.md（比值 0.99~1.21，页内秩相关 1.00）。
      */
     function missingCost(need, owned, guar, opt) {
       opt = opt || {};
       var skipOptional = !!opt.ignoreOptional;
-      var acc = 0, missingKinds = 0, missingPieces = 0, detail = [];
+      var modes = CFG.FARM_MODES;
+
+      // ---- 1) 收集缺口
+      var items = [], missingKinds = 0, missingPieces = 0;
       Object.keys(need).forEach(function (id) {
         if (skipOptional && CFG.OPTIONAL_IDS[id]) return;
         var n = need[id];
         var o = (guar && guar[id]) ? n : (owned[id] || 0);
         var lack = Math.max(0, n - o);
-        if (lack > 0) {
-          var c = unitCost(id) * lack;
-          acc += Math.pow(c, NORM_K);
-          missingKinds += 1;
-          missingPieces += lack;
-          detail.push({ id: id, need: n, owned: o, lack: lack, cost: c });
-        }
+        if (lack <= 0) return;
+        items.push({ id: id, lack: lack, need: n, owned: o });
+        missingKinds += 1;
+        missingPieces += lack;
       });
-      var total = acc > 0 ? Math.pow(acc, 1 / NORM_K) : 0;
+
+      var plan = assignModes(items);
+      var detail = [], groups = [], acc = {};
+      items.forEach(function (it, i) {
+        var g = plan.assign[i];
+        var m = modes[g];
+        var c = plan.cost[i][g];
+        detail.push({ id: it.id, need: it.need, owned: it.owned, lack: it.lack,
+                      cost: c, mode: m.key, modeLabel: m.label });
+        (acc[m.key] = acc[m.key] || []).push(c);
+      });
+
+      // ---- 2) 阶段内 3-范数 + 3) 阶段间求和
+      modes.forEach(function (m, g) {
+        if (!acc[m.key]) return;
+        groups.push({ key: m.key, label: m.label, cost: plan.stages[g],
+                      pieces: acc[m.key].length });
+      });
+      groups.sort(function (a, b) { return b.cost - a.cost; });
       detail.sort(function (a, b) { return b.cost - a.cost; });
-      return { sum: total, kinds: missingKinds, pieces: missingPieces, detail: detail };
+
+      return { sum: plan.total, kinds: missingKinds, pieces: missingPieces,
+               detail: detail, groups: groups };
     }
 
     /** 并列时的次级排序：误差 → 缺失种类数 → 总份数 */
@@ -398,7 +548,7 @@
       return a.score.pieces - b.score.pieces;
     }
 
-    /** 默认排序：收集难度升序（越小越容易凑齐），并列时按 tieBreak */
+    /** 默认排序：相对难度升序（越小越容易凑齐），并列时按 tieBreak */
     function byWeight(a, b) {
       if (a.score.sum !== b.score.sum) return a.score.sum - b.score.sum;
       return tieBreak(a, b);
@@ -408,6 +558,7 @@
     function byError(a, b) { return tieBreak(a, b); }
 
     return { missingCost: missingCost, missingWeight: missingCost, unitCost: unitCost,
+             modeEff: modeEff, modeProb: modeProb, modeGain: modeGain, bestMode: bestMode,
              tieBreak: tieBreak, byWeight: byWeight, byError: byError };
   })();
 

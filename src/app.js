@@ -229,7 +229,7 @@
     state.pageIdx = 0;
     $('#resultStat').textContent = sols.length
       ? ('共 ' + sols.length + ' 个可行方案 · 用时 ' + ms + ' ms · 按' +
-         ($('#sortMode').value === 'error' ? '误差' : '收集难度（预计获取次数，越小越易凑）') + '排序')
+         ($('#sortMode').value === 'error' ? '误差' : '相对难度（S值，越小越易凑）') + '排序')
       : ('没有可行方案（用时 ' + ms + ' ms）· 可尝试放宽误差容限或调整上限');
     renderResults();
   }
@@ -270,7 +270,15 @@
         (lo >= 0 ? '+' : '−') + Math.abs(lo) + ' ~ ' + (hi >= 0 ? '+' : '−') + Math.abs(hi) + ' px', ''));
     }
 
-    head.appendChild(metric('收集难度', fmtInt(Math.round(sol.score.sum)) + ' 次', ''));
+    var stageTip = (sol.score.groups || []).map(function (g) {
+      return g.label + ' ' + g.cost.toFixed(1);
+    }).join(' + ');
+    head.appendChild(metric('相对难度', fmtFixed(sol.score.sum, 1) + '（S值）', '',
+      'S值 ≈ 需要的抽取次数（相对指标，越小越容易凑齐）。\n' +
+      '仿真核对：真实搜索次数约为 S 值的 1.1~1.3 倍（9 个配方，波动 ±6%）。\n' +
+      '算法：① 每个缺失法术先指派到「自己最有利」的搜索模式（繁茂 2~4 级 / 地狱 10 级 / 均匀 0~10 级）；\n' +
+      '② 阶段内用 3-范数聚合（由最难凑的那一项主导）；③ 阶段间相加（不同地点是先后去的）。\n' +
+      (stageTip ? '本例：' + stageTip + '。' : '')));
     head.appendChild(metric('缺失', sol.score.kinds + ' 种 / ' + sol.score.pieces + ' 个', ''));
     head.appendChild(metric('槽位', sol.slots + ' / ' + (sol.staffCap || 26) + ' 格', ''));
 
@@ -338,11 +346,19 @@
     return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   }
 
-  function metric(label, val, cls) {
+  /** 保留 digits 位小数，并给整数部分加千分位（如 1,234.5） */
+  function fmtFixed(n, digits) {
+    var parts = (Number(n) || 0).toFixed(digits == null ? 1 : digits).split('.');
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return parts.join('.');
+  }
+
+  function metric(label, val, cls, tip) {
     var d = el('div', 'metric' + (cls || ''));
     d.appendChild(document.createTextNode(label + ' '));
     var b = el('b', null, val);
     d.appendChild(b);
+    if (tip) d.title = tip;
     return d;
   }
 
