@@ -6,11 +6,12 @@
 *.log
 *.tmp
 
-# 仅本地保留：数据采集、文档、图片素材、旧资料
+# 仅本地保留：数据采集、文档、图片素材、旧资料、历史版本
 data/
 docs/*
 images/
 speed_based/
+historical_version/
 
 # v0.1.0 成品已下架：仅本地留档，不再入库（问题太多，避免用户下错版本）
 跃迁法术收集计算器GUI_v0.1.0.html
@@ -22,6 +23,7 @@ tests/
 # 信息采集脚本（仅本地）；计算器实现脚本需上传
 scripts/*
 !scripts/impl/
+!scripts/analysis/
 
 # 文档类：默认全部忽略，只放行 README / 协议 / 指定文件
 *.md
@@ -31,3 +33,4 @@ scripts/*
 !LICENSE
 !docs/Dn*.md
 !docs/*.pdf
+!docs/口径演进讲解.html

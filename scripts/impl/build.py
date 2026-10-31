@@ -18,7 +18,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, "src")
-DEFAULT_OUT = "跃迁法术收集计算器GUI_v0.1.1.html"
+DEFAULT_OUT = "跃迁法术收集计算器GUI_v0.2.2.html"
 
 REQUIRED = ["template.html", "style.css", "engine.js", "icons.js", "app.js"]
 DATA_JSON = os.path.join(ROOT, "data", "spell_weights.json")

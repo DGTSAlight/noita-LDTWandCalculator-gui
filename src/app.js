@@ -165,13 +165,7 @@
 
   /* ------------------------------------------------------------ 参数 */
   function readOpts() {
-    var mult = {
-      2: +$('#multFungal').value || 0,
-      3: +$('#multFungal').value || 0,
-      4: +$('#multFungal').value || 0,
-      10: +$('#multHell').value || 0
-    };
-    LDT.Weights.build(SPELLS, { scheme: 'pct', mult: mult });
+    LDT.Weights.build(SPELLS, { scheme: 'pct' });
 
     var D = targetDistance();
     var tolRaw = Math.max(0, +$('#tolerance').value || 0);
@@ -204,6 +198,7 @@
       common.staffs = staffMultsOf('#bfStaff');
       common.payload = payloadOf('#bfPayload');
       common.bhMinDist = $('#bfBhFar').checked ? LDT.CFG.BH_MIN_DIST : 0;
+      common.limitLtSag = $('#bfLimitSag').checked;
       common.limit = 1000;
     } else {
       common.maxPhases = Math.max(1, +$('#phMaxPhases').value || 1600);
@@ -274,11 +269,19 @@
       return g.label + ' ' + g.cost.toFixed(1);
     }).join(' + ');
     head.appendChild(metric('相对难度', fmtFixed(sol.score.sum, 1) + '（S值）', '',
-      'S值 ≈ 需要的抽取次数（相对指标，越小越容易凑齐）。\n' +
-      '仿真核对：真实搜索次数约为 S 值的 1.1~1.3 倍（9 个配方，波动 ±6%）。\n' +
-      '算法：① 每个缺失法术先指派到「自己最有利」的搜索模式（繁茂 2~4 级 / 地狱 10 级 / 均匀 0~10 级）；\n' +
-      '② 阶段内用 3-范数聚合（由最难凑的那一项主导）；③ 阶段间相加（不同地点是先后去的）。\n' +
+      'S值 = 预计耗时（单位：走过 1 个区块的时间，越小越容易凑齐）。\n' +
+      '算法：① 每个缺失法术算出「三个刷点各走一轮能拿到几份」；② 指派到最划算的刷点；\n' +
+      '③ 同一刷点内用 3-范数聚合出「要走几轮」（由最难凑的那项主导）；\n' +
+      '④ 换成时间：轮数 × 单轮耗时 + 开世界次数 × 跨平行世界 113.2。\n' +
+      '主世界 7 座圣山视为已搜完，所以第一轮就要跨平行世界；一趟平行世界同时补满圣山与繁茂。\n' +
+      '单轮耗时（' + (LDT.CFG.MODE === 'expert' ? '熟练' : '默认') + '）：' +
+      LDT.CFG.ZONES.map(function (z) { return z.label + ' ' + z.cost.toFixed(1); }).join(' / ') + '。\n' +
       (stageTip ? '本例：' + stageTip + '。' : '')));
+    try {
+      var planItems = (sol.score.detail || []).map(function (d) { return { id: d.id, lack: d.lack }; });
+      var plan = LDT.Plan.best(planItems);
+      if (plan) head.appendChild(planChip(plan));
+    } catch (e) { /* 策略建议是附加信息，算不出来不影响主流程 */ }
     head.appendChild(metric('缺失', sol.score.kinds + ' 种 / ' + sol.score.pieces + ' 个', ''));
     head.appendChild(metric('槽位', sol.slots + ' / ' + (sol.staffCap || 26) + ' 格', ''));
 
@@ -351,6 +354,73 @@
     var parts = (Number(n) || 0).toFixed(digits == null ? 1 : digits).split('.');
     parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return parts.join('.');
+  }
+
+
+  // ---------- 最佳策略徽章 + 说明弹窗 ----------
+  var PLAN_HELP = [
+    ['greedy', '按法术分配：每个缺的法术各自派到「每单位时间出得最多」的刷点，同一刷点内按最难凑的那项定轮数。这是可行方案里的最优解，所以基本总是它胜出。'],
+    ['冒号后的 holy / fungi / hell', '这个配方**耗时最多**的刷点（不是第一步）：holy = 圣山，fungi = 繁茂，hell = 地狱。'],
+    ['holy_first / fungi_first / hell_first', '硬性顺序对照：只在一个刷点根本出不了该法术时才往下传。数字通常大一个量级，用来说明「为什么值得按法术分开刷」。'],
+    ['单位', '1 = 直线穿过 1 个区块（512 px）空隙地形的时间。']
+  ];
+
+  function showPlanHelp(plan) {
+    var mask = el('div', 'modal-mask');
+    var box = el('div', 'modal-box');
+    box.appendChild(el('div', 'modal-title', '最佳策略：' + plan.label));
+
+    // 1) 区域明细（最有用的一块，放最前）
+    if (plan.zoneDetail && plan.zoneDetail.length) {
+      var zd = el('div', 'modal-body');
+      zd.appendChild(el('div', 'modal-sub', '时间花在哪（本例估计）'));
+      var tot = plan.zoneDetail.reduce(function (a, x) { return a + x.time; }, 0) || 1;
+      plan.zoneDetail.forEach(function (x) {
+        zd.appendChild(el('div', 'modal-row' + (x.key === plan.zone ? ' best' : ''),
+          x.label + '：' + Math.round(x.time) + '（' + Math.round(100 * x.time / tot) + '%，约 '
+          + x.rounds.toFixed(1) + ' 轮）' + (x.key === plan.zone ? '　← 主要耗时' : '')));
+      });
+      box.appendChild(zd);
+    }
+
+    // 2) 名词解释
+    var body = el('div', 'modal-body');
+    body.appendChild(el('div', 'modal-sub', '缩写含义'));
+    PLAN_HELP.forEach(function (r) {
+      var line = el('div', 'modal-row');
+      line.appendChild(el('b', null, r[0]));
+      line.appendChild(document.createTextNode(' —— ' + r[1]));
+      body.appendChild(line);
+    });
+    box.appendChild(body);
+
+    // 3) 四种策略对照
+    var cand = el('div', 'modal-body');
+    cand.appendChild(el('div', 'modal-sub', '四种策略的估计耗时（越小越快）'));
+    (plan.all || []).forEach(function (c) {
+      cand.appendChild(el('div', 'modal-row' + (c.key === plan.key ? ' best' : ''),
+        c.label + '：' + Math.round(c.total) + (c.key === plan.key ? '　← 最快' : '')));
+    });
+    box.appendChild(cand);
+
+    var btn = el('button', 'modal-close', '知道了');
+    btn.type = 'button';
+    btn.onclick = function () { document.body.removeChild(mask); };
+    box.appendChild(btn);
+    mask.appendChild(box);
+    mask.onclick = function (ev) { if (ev.target === mask) document.body.removeChild(mask); };
+    document.body.appendChild(mask);
+  }
+
+  function planChip(plan) {
+    var b = el('button', 'plan-chip');
+    b.type = 'button';
+    b.title = '点开看各缩写的含义';
+    b.appendChild(document.createTextNode('最佳策略 '));
+    b.appendChild(el('b', null, plan.label));
+    b.appendChild(el('span', 'plan-q', '?'));
+    b.onclick = function (ev) { ev.stopPropagation(); showPlanHelp(plan); };
+    return b;
   }
 
   function metric(label, val, cls, tip) {
@@ -603,7 +673,12 @@
       renderResults();
     });
     $('#sortMode').addEventListener('change', function () { if (state.sols.length) solve(); });
+    $('#playerMode').addEventListener('change', function () {
+      LDT.CFG.setMode(this.value);
+      if (state.sols.length) solve();
+    });
     $('#runSelftest').addEventListener('click', runSelftest);
+    LDT.CFG.setMode($('#playerMode').value);
 
     // 校准器开启时法杖倍率不参与计算，但控件保持可选（只做标注，不禁用）
     function syncCalib() {

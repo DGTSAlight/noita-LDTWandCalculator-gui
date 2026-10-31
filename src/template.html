@@ -98,15 +98,14 @@
         <span>同种法术最多收集</span>
         <input type="number" id="maxPerSpell" value="3" min="1" step="1">
       </label>
-      <label class="field">
-        <span>繁茂洞穴倍率（2/3/4 级）</span>
-        <input type="number" id="multFungal" value="2.0" min="0" step="0.1">
-      </label>
-      <label class="field">
-        <span>地狱法杖倍率（10 级）</span>
-        <input type="number" id="multHell" value="3.0" min="0" step="0.1">
-      </label>
       <label class="chk" title="取消勾选后，校准器 / 零时 / 载荷等可选组件不计入收集难度"><input type="checkbox" id="countOptional" checked> 难度计入可选组件</label>
+      <label class="field" title="只影响「被怪打断的代价」和「地狱要不要整轮扫」：地形系数（空隙 1 / 混合 2 / 固体 4）是客观量，不随熟练度变">
+        <span>玩家水平</span>
+        <select id="playerMode">
+          <option value="default" selected>默认（谨慎搜索繁茂和地狱）</option>
+          <option value="expert">熟练（已经掌握繁茂地狱地形）</option>
+        </select>
+      </label>
       <label class="field">
         <span>排序</span>
         <select id="sortMode">
@@ -159,6 +158,7 @@
         </select>
       </label>
       <label class="chk" title="黑洞必须飞出加载区（≥ 2048 px）才能让闪电弹不撞墙"><input type="checkbox" id="bfBhFar" checked> 黑洞远离加载区（≥2048 px）</label>
+      <label class="chk" title="闪电弹存在时间过长会因重力严重下垂。开启后只保留时间修正 ≤ +75f 的配置（最多一个蓝表）"><input type="checkbox" id="bfLimitSag" checked> 限制闪电弹下垂（时间修正 ≤ +75f）</label>
     </div>
 
     <div class="page-params" id="pp-phase" hidden>
@@ -203,7 +203,7 @@
     <span>本工具为社区辅助工具，非官方。</span>
   </div>
   <div class="foot-credit">
-    <span>致谢：帮助本项目的 Wiki 维护者 —— <b>zb01</b>、<b>sajoyukimi</b>、<b>半导体果冻</b>、<b>kuroleaf</b></span>
+    <span>致谢：帮助本项目的 Wiki 维护者 —— <b>zb01</b>、<b>sajoyukimi</b>、<b>半导体果冻</b>、<b>kuroleaf</b>；源码分析协助 —— <b>shug</b>、<b>Manticore258</b></span>
     <span id="pageCredit" hidden></span>
   </div>
 </footer>
