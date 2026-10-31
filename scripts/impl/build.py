@@ -11,6 +11,9 @@
     /*__ENGINE__*/      ← src/engine.js
     /*__APP__*/         ← src/app.js
 
+模板里的 {{VERSION}} 会替换成输出文件名中的版本号（`_v0.2.2.html` → `v0.2.2`），
+避免标题版本号与文件名脱节。
+
 依赖：src/template.html、src/style.css、src/app.js（阶段 3 产出）
 """
 import os
@@ -46,6 +49,12 @@ def main():
     data_js = "window.SPELL_DATA = " + open(DATA_JSON, encoding="utf-8").read() + ";"
 
     html = read("template.html")
+    # 版本号从输出文件名取，避免标题与文件名各写一份而漂移
+    import re
+    m = re.search(r"_v(\d+\.\d+\.\d+)\.html$", out_name)
+    version = "v" + m.group(1) if m else "dev"
+    html = html.replace("{{VERSION}}", version)
+
     parts = {
         "<!--__STYLE__-->": "<style>\n" + read("style.css") + "\n</style>",
         "/*__DATA__*/": data_js,
