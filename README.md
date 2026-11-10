@@ -2,18 +2,18 @@
 
 **Noita LongDistanceTravel Calculator GUI** —— 两个单文件 HTML 工具，无需任何环境，双击即可运行，支持离线使用。
 
-| 工具 | 解决的问题 |
-|---|---|
-| **跃迁法术收集计算器**（v0.2.2） | 我想飞这么远，**还差哪些法术** |
-| **速度跃迁计算器**（v0.7） | 我有这些修正，**能飞多远** |
+| 工具 | 解决的问题 | 面向的用户 |
+|---|---|---|
+| **跃迁法术收集计算器**（v0.2.3） | 我想飞这么远，**还差哪些法术** | 普通玩家 |
+| **速度跃迁计算器**（v0.7） | 我有这些修正，**能飞多远** | 跃迁设计者 |
 
-> 🔗 **在线试用**：<https://dgtsalight.github.io/noita-LDTWandCalculator-gui/>
+> 🔗 **在线试用**：[跃迁法术收集计算器](https://dgtsalight.github.io/noita-LDTWandCalculator-gui/) · [速度跃迁计算器](https://dgtsalight.github.io/noita-calcu/)
 >
 > 🌐 **Language / 切换语言**：[English](README.en.md) · 中文（当前）
 
 ---
 
-## 一、跃迁法术收集计算器（v0.2.2）
+## 一、跃迁法术收集计算器（v0.2.3）
 
 勾选你已有的法术与数量，工具反推所有可行的跃迁配置，按**收集难度**排序，并高亮还缺什么。
 
@@ -54,14 +54,14 @@
 
 ### 使用方法
 
-1. 直接[在线试用](https://dgtsalight.github.io/noita-LDTWandCalculator-gui/)，或双击 `跃迁法术收集计算器GUI_v0.2.2.html`。
+1. 直接[在线试用](https://dgtsalight.github.io/noita-LDTWandCalculator-gui/)，或双击 `跃迁法术收集计算器GUI_v0.2.3.html`。
 2. 左侧勾选已拥有的法术；数量留空按 1 计（窄屏点 ☰ 展开法术栏）。
 3. 设置目标距离、误差容限、同种法术上限等参数。
 4. 点「开始计算」，结果按收集难度从小到大排列。
 
 ### 文件说明
 
-- `跃迁法术收集计算器GUI_v0.2.2.html` —— 单文件，约 206 KB，离线可用。
+- `跃迁法术收集计算器GUI_v0.2.3.html` —— 单文件，约 208 KB，离线可用。
 
 ---
 

@@ -680,6 +680,14 @@
     $('#runSelftest').addEventListener('click', runSelftest);
     LDT.CFG.setMode($('#playerMode').value);
 
+    // 「下载本地版」只在在线（http/https）环境显示：
+    // file:// 双击打开时这个文件本身就已经是离线版；content://（Android）、
+    // chrome-extension:// 等内嵌协议下同理，都不该再给出下载入口。
+    var dlOffline = $('#dl-offline-link');
+    if (dlOffline && !/^https?:$/.test(location.protocol)) {
+      dlOffline.style.display = 'none';
+    }
+
     // 校准器开启时法杖倍率不参与计算，但控件保持可选（只做标注，不禁用）
     function syncCalib() {
       var on = $('#ttCalibrator').checked;

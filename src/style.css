@@ -298,6 +298,29 @@ button.primary:active { transform: translateY(1px); }
 }
 .foot-credit b { color: var(--accent); font-weight: 600; }
 
+/* ---------- 页脚操作区：下载本地版 / 仓库 / AI 提示 ---------- */
+.foot-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin-top: 2px; padding-top: 10px; border-top: 1px dashed #241c44;
+}
+.foot-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border: 1px solid var(--line2); border-radius: 999px;
+  background: rgba(157, 125, 255, .08); color: var(--accent);
+  font-size: 11.5px; line-height: 1.5; text-decoration: none; cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.foot-btn:hover {
+  border-color: var(--accent); background: rgba(157, 125, 255, .18); color: var(--txt);
+}
+.foot-btn.github {
+  color: var(--gold); border-color: rgba(251, 191, 36, .45); background: rgba(251, 191, 36, .07);
+}
+.foot-btn.github:hover {
+  border-color: var(--gold); background: rgba(251, 191, 36, .16); color: var(--txt);
+}
+.foot-note { color: var(--warn); font-size: 11.5px; }
+
 /* ---------- 移动端 / 窄屏 ---------- */
 @media (max-width: 980px) {
   .layout { grid-template-columns: minmax(0, 1fr); }

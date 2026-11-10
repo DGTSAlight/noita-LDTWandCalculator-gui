@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>跃迁法术收集计算器 v0.2.2 · Noita</title>
+<title>跃迁法术收集计算器 v0.2.3 · Noita</title>
 <style>
 /* 跃迁法术收集计算器 —— 样式（黑底 + 荧光紫/绿点缀，贴近 Noita 观感） */
 /* 与旧版跃迁计算器（v0.7）保持一致的主题变量 */
@@ -305,6 +305,29 @@ button.primary:active { transform: translateY(1px); }
 }
 .foot-credit b { color: var(--accent); font-weight: 600; }
 
+/* ---------- 页脚操作区：下载本地版 / 仓库 / AI 提示 ---------- */
+.foot-actions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  margin-top: 2px; padding-top: 10px; border-top: 1px dashed #241c44;
+}
+.foot-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 11px; border: 1px solid var(--line2); border-radius: 999px;
+  background: rgba(157, 125, 255, .08); color: var(--accent);
+  font-size: 11.5px; line-height: 1.5; text-decoration: none; cursor: pointer;
+  transition: border-color .15s, background .15s, color .15s;
+}
+.foot-btn:hover {
+  border-color: var(--accent); background: rgba(157, 125, 255, .18); color: var(--txt);
+}
+.foot-btn.github {
+  color: var(--gold); border-color: rgba(251, 191, 36, .45); background: rgba(251, 191, 36, .07);
+}
+.foot-btn.github:hover {
+  border-color: var(--gold); background: rgba(251, 191, 36, .16); color: var(--txt);
+}
+.foot-note { color: var(--warn); font-size: 11.5px; }
+
 /* ---------- 移动端 / 窄屏 ---------- */
 @media (max-width: 980px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
@@ -415,7 +438,7 @@ button.primary:active { transform: translateY(1px); }
     <span class="logo">◈</span>
     <div>
       <h1>跃迁法术收集计算器</h1>
-      <p class="sub">勾选你已有的法术，算出还差什么 · v0.2.2</p>
+      <p class="sub">勾选你已有的法术，算出还差什么 · v0.2.3</p>
     </div>
   </div>
   <nav class="tabs" role="tablist">
@@ -571,12 +594,17 @@ button.primary:active { transform: translateY(1px); }
 
 <footer class="foot">
   <div class="foot-main">
-    <span>数据来源：中文 Noita Wiki（法术等级和生成概率）。相对难度（S值）≈ 需要的抽取次数：先把每个法术指派到最有利的搜索地点，阶段内用 3-范数聚合、阶段间相加，越小越容易凑齐。</span>
+    <span>数据来源：中文 Noita Wiki（法术等级和生成概率）。相对难度（S值）≈ 预计时间代价：把每个缺失法术指派到最有利的刷点，同一刷点内用 3-范数聚合轮数，再乘单轮时间代价并加上跨平行世界成本，越小越容易凑齐。</span>
     <span>本工具为社区辅助工具，非官方。</span>
   </div>
   <div class="foot-credit">
     <span>致谢：帮助本项目的 Wiki 维护者 —— <b>zb01</b>、<b>一键山雏</b>、<b>半导体果冻</b>、<b>kuroleaf</b>；源码分析协助 —— <b>shug</b>、<b>Manticore258</b></span>
     <span id="pageCredit" hidden></span>
+  </div>
+  <div class="foot-actions">
+    <a class="foot-btn" id="dl-offline-link" href="./" download="跃迁法术收集计算器GUI_v0.2.3.html">下载本地版</a>
+    <a class="foot-btn github" href="https://github.com/DGTSAlight/noita-LDTWandCalculator-gui" target="_blank" rel="noopener noreferrer">★ Star on GitHub</a>
+    <span class="foot-note">本工具为AI辅助生成，请注意鉴别内容真实性</span>
   </div>
 </footer>
 
@@ -5596,6 +5624,14 @@ window.ICON_DATA = {
     });
     $('#runSelftest').addEventListener('click', runSelftest);
     LDT.CFG.setMode($('#playerMode').value);
+
+    // 「下载本地版」只在在线（http/https）环境显示：
+    // file:// 双击打开时这个文件本身就已经是离线版；content://（Android）、
+    // chrome-extension:// 等内嵌协议下同理，都不该再给出下载入口。
+    var dlOffline = $('#dl-offline-link');
+    if (dlOffline && !/^https?:$/.test(location.protocol)) {
+      dlOffline.style.display = 'none';
+    }
 
     // 校准器开启时法杖倍率不参与计算，但控件保持可选（只做标注，不禁用）
     function syncCalib() {

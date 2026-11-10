@@ -2,18 +2,18 @@
 
 Two single-file HTML tools. No environment needed — double-click and run, works offline.
 
-| Tool | Question it answers |
-|---|---|
-| **Spell Collection Calculator** (v0.2.2) | I want to travel this far — **which spells am I missing?** |
-| **Speed Warp Calculator** (v0.7) | I have these modifiers — **how far can I travel?** |
+| Tool | Question it answers | Intended users |
+|---|---|---|
+| **Spell Collection Calculator** (v0.2.3) | I want to travel this far — **which spells am I missing?** | General players |
+| **Speed Warp Calculator** (v0.7) | I have these modifiers — **how far can I travel?** | LDT designers |
 
-> 🔗 **Try it online**: <https://dgtsalight.github.io/noita-LDTWandCalculator-gui/>
+> 🔗 **Try it online**: [Spell Collection Calculator](https://dgtsalight.github.io/noita-LDTWandCalculator-gui/) · [Speed Warp Calculator](https://dgtsalight.github.io/noita-calcu/)
 >
 > 🌐 **Language**：[中文（默认）](README.md) · English (current)
 
 ---
 
-## 1. Spell Collection Calculator (v0.2.2)
+## 1. Spell Collection Calculator (v0.2.3)
 
 Tick the spells you already own. The tool searches every viable warp build, ranks them by **collection difficulty**, and highlights what is still missing.
 
@@ -54,14 +54,14 @@ Tick the spells you already own. The tool searches every viable warp build, rank
 
 ### Usage
 
-1. [Try it online](https://dgtsalight.github.io/noita-LDTWandCalculator-gui/), or double-click `跃迁法术收集计算器GUI_v0.2.2.html`.
+1. [Try it online](https://dgtsalight.github.io/noita-LDTWandCalculator-gui/), or double-click `跃迁法术收集计算器GUI_v0.2.3.html`.
 2. Tick the spells you own on the left; an empty count means 1 (tap ☰ on narrow screens).
 3. Set the target distance, tolerance and per-spell cap.
 4. Click "开始计算". Results are sorted from easiest to hardest.
 
 ### File
 
-- `跃迁法术收集计算器GUI_v0.2.2.html` — the whole tool in one file (~206 KB), works offline.
+- `跃迁法术收集计算器GUI_v0.2.3.html` — the whole tool in one file (~208 KB), works offline.
 
 ---
 

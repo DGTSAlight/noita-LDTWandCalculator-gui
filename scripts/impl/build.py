@@ -11,7 +11,7 @@
     /*__ENGINE__*/      ← src/engine.js
     /*__APP__*/         ← src/app.js
 
-模板里的 {{VERSION}} 会替换成输出文件名中的版本号（`_v0.2.2.html` → `v0.2.2`），
+模板里的 {{VERSION}} 会替换成输出文件名中的版本号（`_v0.2.3.html` → `v0.2.3`），
 避免标题版本号与文件名脱节。
 
 依赖：src/template.html、src/style.css、src/app.js（阶段 3 产出）
@@ -21,7 +21,7 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SRC = os.path.join(ROOT, "src")
-DEFAULT_OUT = "跃迁法术收集计算器GUI_v0.2.2.html"
+DEFAULT_OUT = "跃迁法术收集计算器GUI_v0.2.3.html"
 
 REQUIRED = ["template.html", "style.css", "engine.js", "icons.js", "app.js"]
 DATA_JSON = os.path.join(ROOT, "data", "spell_weights.json")
