@@ -34,3 +34,4 @@ scripts/*
 !docs/Dn*.md
 !docs/*.pdf
 !docs/口径演进讲解.html
+!docs/时间代价模型技术细节及其不足讲解.html
